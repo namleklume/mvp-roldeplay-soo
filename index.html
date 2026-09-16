@@ -11,7 +11,6 @@
         .form-group { display: flex; gap: 10px; margin-bottom: 15px; }
         input { padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; width: 100%; box-sizing: border-box; }
         
-        /* 🌟 CSS สำหรับกล่องคำแนะนำ */
         .instructions {
             background-color: #e8f0fe;
             color: #1967d2;
@@ -52,7 +51,6 @@
         <input type="text" id="staffName" placeholder="ชื่อ-นามสกุล" required>
     </div>
 
-    <!-- 🌟 กล่องคำแนะนำการใช้งาน -->
     <div class="instructions">
         <strong>💡 วิธีการใช้งานระบบสอบ Roleplay:</strong>
         <ol>
@@ -67,7 +65,6 @@
     </div>
 
     <div class="controls">
-        <!-- 🌟 เปลี่ยนปุ่มเป็นแบบกดค้าง (ลบ onclick ออก) -->
         <button id="micBtn">🎤 กดค้างเพื่อพูด (ปล่อยเพื่อส่ง)</button>
         <button id="endBtn" onclick="endConversation()">🛑 จบการสนทนาและดูผลสอบ</button>
         <div class="status" id="statusText">พร้อมใช้งาน</div>
@@ -101,7 +98,6 @@
     const staffIdInput = document.getElementById('staffId');
     const staffNameInput = document.getElementById('staffName');
 
-    // 🌟 ระบบ Pre-warming: ปลุกเซิร์ฟเวอร์หลังบ้าน
     let isServerAwake = false;
 
     function pingServer() {
@@ -132,14 +128,13 @@
     staffIdInput.addEventListener('blur', pingServer);
     staffNameInput.addEventListener('blur', pingServer);
 
-    // 🌟 ระบบ Push-to-Talk (กดค้างเพื่อพูด ปล่อยเพื่อส่ง)
     micBtn.addEventListener('mousedown', startRecording);
     micBtn.addEventListener('mouseup', stopRecording);
     micBtn.addEventListener('touchstart', startRecording, {passive: true});
     micBtn.addEventListener('touchend', stopRecording, {passive: true});
 
     function startRecording(e) {
-        if(e) e.preventDefault(); // ป้องกันการคลุมดำปุ่มตอนกดค้าง
+        if(e) e.preventDefault(); 
         if (!staffIdInput.value || !staffNameInput.value) {
             alert("กรุณากรอกรหัสพนักงานและชื่อให้ครบถ้วนก่อนเริ่มสอบครับ");
             return;
@@ -167,7 +162,6 @@
         const transcript = event.results[0][0].transcript;
         addMessage(transcript, 'staff');
         
-        playFillerSound(); // 🌟 เล่นเสียงคั่นเวลาทันทีที่พูดจบ
         sendToAI(transcript);
     };
 
@@ -179,24 +173,6 @@
             statusText.innerText = "กำลังส่งข้อมูล...";
         }
     };
-
-    // 🌟 ฟังก์ชันเล่นเสียงคั่นเวลา (Filler Sound)
-    function playFillerSound() {
-        if ('speechSynthesis' in window) {
-            const fillers = ["อืม...", "อ่า...", "เดี๋ยวนะคะ...", "อืมมม..."];
-            const randomFiller = fillers[Math.floor(Math.random() * fillers.length)];
-            
-            const utterance = new SpeechSynthesisUtterance(randomFiller);
-            utterance.lang = 'th-TH'; 
-            utterance.rate = 1.1; 
-            
-            const voices = window.speechSynthesis.getVoices();
-            const thaiVoice = voices.find(voice => voice.lang === 'th-TH');
-            if(thaiVoice) utterance.voice = thaiVoice;
-
-            window.speechSynthesis.speak(utterance);
-        }
-    }
 
     async function sendToAI(message, retries = 2) {
         statusText.innerText = "ลูกค้ากำลังคิดคำตอบ...";
@@ -349,7 +325,7 @@
 
     function speakText(text) {
         if ('speechSynthesis' in window) {
-            // 🌟 ตัดเสียง Filler ออกทันทีเพื่อพูดประโยคจริง
+            // ยังคงคำสั่งนี้ไว้ เพื่อตัดเสียงเก่าที่อาจจะยังพูดไม่จบออกทันทีเมื่อประโยคใหม่มาถึง
             window.speechSynthesis.cancel(); 
             
             let speakableText = text.replace(/[\n\r]+/g, ' ') 
