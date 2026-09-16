@@ -237,7 +237,9 @@
     }
 
     function startCooldown(seconds) {
-        let timeLeft = seconds;
+        speakText("ขออภัยค่ะ คิวระบบเต็ม รบกวนรอสักครู่นะคะ"); 
+        
+        let timeLeft = 7; // ลดเวลาจาก 15 เหลือ 7 วินาที
         micBtn.disabled = true;
         endBtn.disabled = true;
         micBtn.style.backgroundColor = "#999"; 
@@ -258,7 +260,8 @@
         }, 1000);
     }
 
-    async function endConversation() {
+    // 🌟 เพิ่มระบบ retries (ยิงซ้ำ) ให้กรรมการประเมินเหมือนตอนแชท
+    async function endConversation(retries = 2) {
         if (!chatHistory) {
             alert("คุณยังไม่ได้เริ่มการสนทนาเลยครับ");
             return;
@@ -278,40 +281,52 @@
             activeModel: activeSessionModel 
         };
 
-        try {
-            const response = await fetch(WEBHOOK_URL, {
-                method: "POST",
-                headers: { "Content-Type": "text/plain" },
-                body: JSON.stringify(payload)
-            });
+        for (let i = 0; i <= retries; i++) {
+            try {
+                const response = await fetch(WEBHOOK_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain" },
+                    body: JSON.stringify(payload)
+                });
 
-            const data = await response.json();
-            
-            feedbackBox.style.display = "block";
-            let summaryText = data.summary || "ระบบไม่สามารถสร้างคำอธิบายได้ โปรดลองทดสอบใหม่อีกครั้ง";
-            
-            if (data.is_pass) {
-                feedbackBox.style.backgroundColor = "#d4edda";
-                feedbackBox.style.color = "#155724";
-                feedbackBox.innerHTML = `✅ <b>สอบผ่านเกณฑ์!</b><br><br>${summaryText}`;
-            } else {
-                feedbackBox.style.backgroundColor = "#f8d7da";
-                feedbackBox.style.color = "#721c24";
-                feedbackBox.innerHTML = `❌ <b>ยังไม่ผ่านเกณฑ์</b><br><br>${summaryText}`;
+                const data = await response.json();
+                
+                // 🌟 ดัก Error: ถ้ากรรมการเจอปัญหาคิวเต็ม ให้โยนเข้า Catch เพื่อลองใหม่
+                if (data.error) throw new Error(data.error);
+
+                feedbackBox.style.display = "block";
+                let summaryText = data.summary || "ระบบไม่สามารถสร้างคำอธิบายได้ โปรดลองทดสอบใหม่อีกครั้ง";
+                
+                if (data.is_pass) {
+                    feedbackBox.style.backgroundColor = "#d4edda";
+                    feedbackBox.style.color = "#155724";
+                    feedbackBox.innerHTML = `✅ <b>สอบผ่านเกณฑ์!</b><br><br>${summaryText}`;
+                } else {
+                    feedbackBox.style.backgroundColor = "#f8d7da";
+                    feedbackBox.style.color = "#721c24";
+                    feedbackBox.innerHTML = `❌ <b>ยังไม่ผ่านเกณฑ์</b><br><br>${summaryText}`;
+                }
+                
+                addMessage(`📊 ผลการประเมิน:\n${summaryText}`, 'ai');
+                statusText.innerText = "การสอบเสร็จสิ้น (กรุณารีเฟรชหน้าเว็บเพื่อเริ่มใหม่)";
+                
+                chatHistory = "";
+                activeSessionModel = null; 
+                currentSessionId = "SES-" + Date.now(); 
+                return; // สำเร็จแล้วออกจากลูปเลย
+
+            } catch (error) {
+                // ถ้ายังเหลือโควต้าให้ยิงซ้ำ จะรอ 3 วินาทีแล้วลองใหม่เงียบๆ
+                if (i < retries) {
+                    statusText.innerText = `คิวเต็ม... กำลังทบทวนผลสอบใหม่ (ครั้งที่ ${i + 1})`;
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+                } else {
+                    // ถ้าลองครบ 3 ครั้งแล้วยังไม่ได้ ค่อยเปิดปุ่มให้พนักงานกดประเมินใหม่เอง
+                    statusText.innerText = "เซิร์ฟเวอร์คิวเต็ม! โปรดลองกดปุ่ม [จบการสนทนา] ใหม่อีกครั้ง";
+                    micBtn.disabled = false;
+                    endBtn.disabled = false;
+                }
             }
-            
-            addMessage(`📊 ผลการประเมิน:\n${summaryText}`, 'ai');
-            
-            statusText.innerText = "การสอบเสร็จสิ้น (กรุณารีเฟรชหน้าเว็บเพื่อเริ่มใหม่)";
-            
-            chatHistory = "";
-            activeSessionModel = null; 
-            currentSessionId = "SES-" + Date.now(); 
-
-        } catch (error) {
-            statusText.innerText = "เกิดข้อผิดพลาดในการดึงผลสอบ";
-            micBtn.disabled = false;
-            endBtn.disabled = false;
         }
     }
 
