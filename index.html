@@ -10,12 +10,27 @@
         h2 { text-align: center; color: #1a73e8; margin-top: 0; }
         .form-group { display: flex; gap: 10px; margin-bottom: 15px; }
         input { padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; width: 100%; box-sizing: border-box; }
+        
+        /* 🌟 CSS สำหรับกล่องคำแนะนำ */
+        .instructions {
+            background-color: #e8f0fe;
+            color: #1967d2;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            line-height: 1.6;
+            border-left: 4px solid #1a73e8;
+        }
+        .instructions ol { margin: 10px 0 0 0; padding-left: 25px; }
+        .instructions li { margin-bottom: 5px; }
+        
         .chat-box { height: 350px; border: 1px solid #ddd; border-radius: 8px; padding: 15px; overflow-y: auto; background-color: #fafafa; margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; }
         .msg { padding: 10px 15px; border-radius: 20px; max-width: 80%; line-height: 1.4; font-size: 14px; }
         .msg.staff { background-color: #1a73e8; color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
         .msg.ai { background-color: #e4e6eb; color: black; align-self: flex-start; border-bottom-left-radius: 2px; }
         .controls { display: flex; flex-direction: column; gap: 10px; }
-        button { border: none; padding: 15px; border-radius: 50px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; width: 100%; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        button { border: none; padding: 15px; border-radius: 50px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; width: 100%; box-shadow: 0 4px 6px rgba(0,0,0,0.1); user-select: none; -webkit-user-select: none; }
         #micBtn { background-color: #34a853; color: white; }
         #micBtn:hover { background-color: #2b8242; }
         #micBtn.recording { background-color: #ea4335; animation: pulse 1.5s infinite; }
@@ -37,12 +52,23 @@
         <input type="text" id="staffName" placeholder="ชื่อ-นามสกุล" required>
     </div>
 
+    <!-- 🌟 กล่องคำแนะนำการใช้งาน -->
+    <div class="instructions">
+        <strong>💡 วิธีการใช้งานระบบสอบ Roleplay:</strong>
+        <ol>
+            <li>กรอกรหัสพนักงานและชื่อให้ครบถ้วน</li>
+            <li><strong>กดปุ่มไมค์ค้างไว้</strong> เพื่อพูดโต้ตอบ และ <strong>ปล่อยนิ้ว</strong> เมื่อพูดจบ</li>
+            <li>เริ่มต้นบทสนทนาด้วยการกล่าวทักทาย เช่น <br><i>"ออโรร่า สวัสดีค่ะ/ครับ คุณลูกค้าดูสินค้าหมวดไหนดีคะ"</i></li>
+        </ol>
+    </div>
+
     <div class="chat-box" id="chatBox">
-        <div class="msg ai">กรุณากรอกรหัสพนักงานและชื่อให้ครบถ้วน จากนั้นกดปุ่มไมค์เพื่อเริ่มบทสนทนา (ลูกค้าเดินเข้ามาในร้านแล้วครับ)</div>
+        <div class="msg ai">ลูกค้าเดินเข้ามาในร้านแล้วครับ พร้อมแล้วกดค้างที่ปุ่มไมค์เพื่อกล่าวทักทายได้เลย!</div>
     </div>
 
     <div class="controls">
-        <button id="micBtn" onclick="toggleMic()">🎤 กดเพื่อพูดโต้ตอบ</button>
+        <!-- 🌟 เปลี่ยนปุ่มเป็นแบบกดค้าง (ลบ onclick ออก) -->
+        <button id="micBtn">🎤 กดค้างเพื่อพูด (ปล่อยเพื่อส่ง)</button>
         <button id="endBtn" onclick="endConversation()">🛑 จบการสนทนาและดูผลสอบ</button>
         <div class="status" id="statusText">พร้อมใช้งาน</div>
     </div>
@@ -74,11 +100,12 @@
     const feedbackBox = document.getElementById('feedbackBox');
     const staffIdInput = document.getElementById('staffId');
     const staffNameInput = document.getElementById('staffName');
-// 🌟 ระบบ Pre-warming: ปลุกเซิร์ฟเวอร์หลังบ้าน
+
+    // 🌟 ระบบ Pre-warming: ปลุกเซิร์ฟเวอร์หลังบ้าน
     let isServerAwake = false;
 
     function pingServer() {
-        if (isServerAwake) return; // ถ้าปลุกแล้วไม่ต้องส่งซ้ำให้เปลืองเน็ต
+        if (isServerAwake) return; 
         
         fetch(WEBHOOK_URL, {
             method: "POST",
@@ -95,56 +122,82 @@
         .catch(err => console.log("⏳ รอปลุกเซิร์ฟเวอร์รอบถัดไป..."));
     }
 
-    // จุดที่ 1: ปลุกทันทีที่เปิดหน้าเว็บ
     window.addEventListener('DOMContentLoaded', pingServer);
-
-    // จุดที่ 2: ปลุกเมื่อสลับแท็บกลับมา (แก้ปัญหาเปิดหน้าเว็บค้างไว้จนเซิร์ฟเวอร์หลับ)
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
-            isServerAwake = false; // รีเซ็ตสถานะเพื่อบังคับปลุกใหม่
+            isServerAwake = false; 
             pingServer();
         }
     });
-
-    // จุดที่ 3: ปลุกเมื่อพิมพ์รหัสพนักงานหรือชื่อเสร็จ (คลิกเมาส์ออกจากช่องพิมพ์)
     staffIdInput.addEventListener('blur', pingServer);
     staffNameInput.addEventListener('blur', pingServer);
-    function toggleMic() {
+
+    // 🌟 ระบบ Push-to-Talk (กดค้างเพื่อพูด ปล่อยเพื่อส่ง)
+    micBtn.addEventListener('mousedown', startRecording);
+    micBtn.addEventListener('mouseup', stopRecording);
+    micBtn.addEventListener('touchstart', startRecording, {passive: true});
+    micBtn.addEventListener('touchend', stopRecording, {passive: true});
+
+    function startRecording(e) {
+        if(e) e.preventDefault(); // ป้องกันการคลุมดำปุ่มตอนกดค้าง
         if (!staffIdInput.value || !staffNameInput.value) {
             alert("กรุณากรอกรหัสพนักงานและชื่อให้ครบถ้วนก่อนเริ่มสอบครับ");
             return;
         }
+        if (!isRecording) {
+            try { recognition.start(); } catch(err) {}
+        }
+    }
 
+    function stopRecording(e) {
+        if(e) e.preventDefault();
         if (isRecording) {
-            recognition.stop();
-        } else {
-            recognition.start();
+            recognition.stop(); 
         }
     }
 
     recognition.onstart = function() {
         isRecording = true;
         micBtn.classList.add('recording');
-        micBtn.innerText = "🛑 กำลังฟัง... กดเพื่อหยุดพูด";
+        micBtn.innerText = "🛑 กำลังฟัง... (ปล่อยปุ่มเพื่อส่ง)";
         statusText.innerText = "กำลังรับฟังเสียงของคุณ...";
     };
 
     recognition.onresult = function(event) {
         const transcript = event.results[0][0].transcript;
         addMessage(transcript, 'staff');
+        
+        playFillerSound(); // 🌟 เล่นเสียงคั่นเวลาทันทีที่พูดจบ
         sendToAI(transcript);
     };
 
     recognition.onend = function() {
         isRecording = false;
         micBtn.classList.remove('recording');
-        micBtn.innerText = "🎤 กดเพื่อพูดโต้ตอบ";
+        micBtn.innerText = "🎤 กดค้างเพื่อพูด (ปล่อยเพื่อส่ง)";
         if(statusText.innerText === "กำลังรับฟังเสียงของคุณ...") {
-            statusText.innerText = "พร้อมใช้งาน";
+            statusText.innerText = "กำลังส่งข้อมูล...";
         }
     };
 
-// เพิ่มตัวแปร retries = 2 (ยอมให้ระบบแอบยิงซ้ำได้ 2 ครั้งถ้าเน็ตหลุด)
+    // 🌟 ฟังก์ชันเล่นเสียงคั่นเวลา (Filler Sound)
+    function playFillerSound() {
+        if ('speechSynthesis' in window) {
+            const fillers = ["อืม...", "อ่า...", "เดี๋ยวนะคะ...", "อืมมม..."];
+            const randomFiller = fillers[Math.floor(Math.random() * fillers.length)];
+            
+            const utterance = new SpeechSynthesisUtterance(randomFiller);
+            utterance.lang = 'th-TH'; 
+            utterance.rate = 1.1; 
+            
+            const voices = window.speechSynthesis.getVoices();
+            const thaiVoice = voices.find(voice => voice.lang === 'th-TH');
+            if(thaiVoice) utterance.voice = thaiVoice;
+
+            window.speechSynthesis.speak(utterance);
+        }
+    }
+
     async function sendToAI(message, retries = 2) {
         statusText.innerText = "ลูกค้ากำลังคิดคำตอบ...";
         micBtn.disabled = true;
@@ -167,7 +220,6 @@
                     body: JSON.stringify(payload)
                 });
 
-                // ตรวจสอบว่า Google Apps Script คืนค่าสถานะปกติหรือไม่
                 if (!response.ok) throw new Error("HTTP Error " + response.status);
 
                 const data = await response.json();
@@ -175,7 +227,7 @@
                 if(data.error) {
                     if (data.error.includes("QUOTA_EXCEEDED") || data.type === "API_LIMIT") {
                         startCooldown(15); 
-                        return; // ถ้าโควต้าเต็มให้ออกไปพักเครื่อง ไม่ต้องวนลูปยิงซ้ำ
+                        return;
                     }
                     throw new Error(data.error); 
                 }
@@ -193,15 +245,13 @@
                 
                 micBtn.disabled = false;
                 endBtn.disabled = false;
-                return; // เมื่อทำงานสำเร็จ ให้ออกจากฟังก์ชันทันที
+                return;
 
             } catch (error) {
-                // ถ้ายังเหลือโควต้าให้ลองยิงซ้ำ จะรอ 2 วินาทีแล้วไปต่อ
                 if (i < retries) {
                     statusText.innerText = `สัญญาณขัดข้อง กำลังพยายามเชื่อมต่อใหม่ (ครั้งที่ ${i + 1})...`;
                     await new Promise(resolve => setTimeout(resolve, 2000));
                 } else {
-                    // ถ้ายิงซ้ำครบ 2 ครั้งแล้วยังไม่ได้ ค่อยแจ้ง Error ให้พนักงานทราบ
                     statusText.innerText = "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ โปรดตรวจสอบอินเทอร์เน็ตแล้วลองกดพูดใหม่";
                     micBtn.disabled = false;
                     endBtn.disabled = false;
@@ -210,7 +260,6 @@
         }
     }
 
-    // ฟังก์ชันใหม่: หน่วงเวลาปุ่มไมค์
     function startCooldown(seconds) {
         let timeLeft = seconds;
         micBtn.disabled = true;
@@ -227,7 +276,7 @@
                 micBtn.disabled = false;
                 endBtn.disabled = false;
                 micBtn.style.backgroundColor = "#34a853";
-                micBtn.innerText = "🎤 กดเพื่อพูดโต้ตอบ";
+                micBtn.innerText = "🎤 กดค้างเพื่อพูด (ปล่อยเพื่อส่ง)";
                 statusText.innerText = "พร้อมใช้งานอีกครั้ง";
             }
         }, 1000);
@@ -263,8 +312,6 @@
             const data = await response.json();
             
             feedbackBox.style.display = "block";
-            
-            // 🌟 เพิ่มการดักจับข้อความ: ถ้า data.summary หายไป ให้แสดงข้อความสำรองแทน
             let summaryText = data.summary || "ระบบไม่สามารถสร้างคำอธิบายได้ โปรดลองทดสอบใหม่อีกครั้ง";
             
             if (data.is_pass) {
@@ -277,7 +324,6 @@
                 feedbackBox.innerHTML = `❌ <b>ยังไม่ผ่านเกณฑ์</b><br><br>${summaryText}`;
             }
             
-            // (ถ้าคุณมีฟังก์ชัน addMessage แจ้งผลในแชทด้วย ก็ให้ใช้ตัวแปร summaryText เช่นกัน)
             addMessage(`📊 ผลการประเมิน:\n${summaryText}`, 'ai');
             
             statusText.innerText = "การสอบเสร็จสิ้น (กรุณารีเฟรชหน้าเว็บเพื่อเริ่มใหม่)";
@@ -303,7 +349,9 @@
 
     function speakText(text) {
         if ('speechSynthesis' in window) {
-            // ฟิลเตอร์รีดข้อความ: ลบเว้นวรรคซ้ำซ้อนและสัญลักษณ์ที่ทำให้เสียงสะดุด
+            // 🌟 ตัดเสียง Filler ออกทันทีเพื่อพูดประโยคจริง
+            window.speechSynthesis.cancel(); 
+            
             let speakableText = text.replace(/[\n\r]+/g, ' ') 
                                     .replace(/\s{2,}/g, ' ')  
                                     .replace(/["'”’“‘]/g, '')
