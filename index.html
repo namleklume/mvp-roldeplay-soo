@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Roleplay: ระบบสอบมาตรฐานบริการ</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { max-width: 500px; width: 100%; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #1a73e8; margin-top: 0; }
+        .form-group { display: flex; gap: 10px; margin-bottom: 15px; }
+        input { padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; width: 100%; box-sizing: border-box; }
+        .chat-box { height: 350px; border: 1px solid #ddd; border-radius: 8px; padding: 15px; overflow-y: auto; background-color: #fafafa; margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .msg { padding: 10px 15px; border-radius: 20px; max-width: 80%; line-height: 1.4; font-size: 14px; }
+        .msg.staff { background-color: #1a73e8; color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
+        .msg.ai { background-color: #e4e6eb; color: black; align-self: flex-start; border-bottom-left-radius: 2px; }
+        .controls { display: flex; flex-direction: column; gap: 10px; }
+        button { border: none; padding: 15px; border-radius: 50px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; width: 100%; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        #micBtn { background-color: #34a853; color: white; }
+        #micBtn:hover { background-color: #2b8242; }
+        #micBtn.recording { background-color: #ea4335; animation: pulse 1.5s infinite; }
+        #endBtn { background-color: #fbbc05; color: #333; }
+        #endBtn:hover { background-color: #e0a800; }
+        .status { text-align: center; font-size: 13px; color: #666; margin-top: 5px; min-height: 20px;}
+        #feedbackBox { display: none; margin-top: 20px; padding: 15px; border-radius: 8px; font-weight: 500; line-height: 1.5; font-size: 15px; }
+        
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>เข้าสู่ระบบสอบ Roleplay</h2>
+    
+    <div class="form-group">
+        <input type="text" id="staffId" placeholder="รหัสพนักงาน" required>
+        <input type="text" id="staffName" placeholder="ชื่อ-นามสกุล" required>
+    </div>
+
+    <div class="chat-box" id="chatBox">
+        <div class="msg ai">กรุณากรอกรหัสพนักงานและชื่อให้ครบถ้วน จากนั้นกดปุ่มไมค์เพื่อเริ่มบทสนทนา (ลูกค้าเดินเข้ามาในร้านแล้วครับ)</div>
+    </div>
+
+    <div class="controls">
+        <button id="micBtn" onclick="toggleMic()">🎤 กดเพื่อพูดโต้ตอบ</button>
+        <button id="endBtn" onclick="endConversation()">🛑 จบการสนทนาและดูผลสอบ</button>
+        <div class="status" id="statusText">พร้อมใช้งาน</div>
+    </div>
+    
+    <div id="feedbackBox"></div>
+</div>
+
+<script>
+    const availablePersonas = ["P01", "P02", "P03", "P04", "P05", "P06", "P07", "P08", "P09", "P10"]; 
+    const activePersona = availablePersonas[Math.floor(Math.random() * availablePersonas.length)];
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'th-TH'; 
+    recognition.interimResults = false;
+
+    let isRecording = false;
+    let chatHistory = "";
+    let activeSessionModel = null; 
+    let currentSessionId = "SES-" + Date.now(); 
+    
+    // สำคัญ: นำ Web URL จาก Apps Script ล่าสุดของคุณมาวางตรงนี้
+    const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbz8W7ERBSkuqdoJqv19cs3rf02Qo7w14cnU22tDe5w8-LA4tcSPe3ejzEc-v9hYOow6Rw/exec";
+
+    const micBtn = document.getElementById('micBtn');
+    const endBtn = document.getElementById('endBtn');
+    const statusText = document.getElementById('statusText');
+    const chatBox = document.getElementById('chatBox');
+    const feedbackBox = document.getElementById('feedbackBox');
+    const staffIdInput = document.getElementById('staffId');
+    const staffNameInput = document.getElementById('staffName');
+// 🌟 ระบบ Pre-warming: ปลุกเซิร์ฟเวอร์หลังบ้าน
+    let isServerAwake = false;
+
+    function pingServer() {
+        if (isServerAwake) return; // ถ้าปลุกแล้วไม่ต้องส่งซ้ำให้เปลืองเน็ต
+        
+        fetch(WEBHOOK_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain" },
+            body: JSON.stringify({ action: "wakeup" })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "ready") {
+                isServerAwake = true;
+                console.log("✅ เซิร์ฟเวอร์วอร์มเครื่องพร้อมแล้ว!");
+            }
+        })
+        .catch(err => console.log("⏳ รอปลุกเซิร์ฟเวอร์รอบถัดไป..."));
+    }
+
+    // จุดที่ 1: ปลุกทันทีที่เปิดหน้าเว็บ
+    window.addEventListener('DOMContentLoaded', pingServer);
+
+    // จุดที่ 2: ปลุกเมื่อสลับแท็บกลับมา (แก้ปัญหาเปิดหน้าเว็บค้างไว้จนเซิร์ฟเวอร์หลับ)
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            isServerAwake = false; // รีเซ็ตสถานะเพื่อบังคับปลุกใหม่
+            pingServer();
+        }
+    });
+
+    // จุดที่ 3: ปลุกเมื่อพิมพ์รหัสพนักงานหรือชื่อเสร็จ (คลิกเมาส์ออกจากช่องพิมพ์)
+    staffIdInput.addEventListener('blur', pingServer);
+    staffNameInput.addEventListener('blur', pingServer);
+    function toggleMic() {
+        if (!staffIdInput.value || !staffNameInput.value) {
+            alert("กรุณากรอกรหัสพนักงานและชื่อให้ครบถ้วนก่อนเริ่มสอบครับ");
+            return;
+        }
+
+        if (isRecording) {
+            recognition.stop();
+        } else {
+            recognition.start();
+        }
+    }
+
+    recognition.onstart = function() {
+        isRecording = true;
+        micBtn.classList.add('recording');
+        micBtn.innerText = "🛑 กำลังฟัง... กดเพื่อหยุดพูด";
+        statusText.innerText = "กำลังรับฟังเสียงของคุณ...";
+    };
+
+    recognition.onresult = function(event) {
+        const transcript = event.results[0][0].transcript;
+        addMessage(transcript, 'staff');
+        sendToAI(transcript);
+    };
+
+    recognition.onend = function() {
+        isRecording = false;
+        micBtn.classList.remove('recording');
+        micBtn.innerText = "🎤 กดเพื่อพูดโต้ตอบ";
+        if(statusText.innerText === "กำลังรับฟังเสียงของคุณ...") {
+            statusText.innerText = "พร้อมใช้งาน";
+        }
+    };
+
+// เพิ่มตัวแปร retries = 2 (ยอมให้ระบบแอบยิงซ้ำได้ 2 ครั้งถ้าเน็ตหลุด)
+    async function sendToAI(message, retries = 2) {
+        statusText.innerText = "ลูกค้ากำลังคิดคำตอบ...";
+        micBtn.disabled = true;
+        endBtn.disabled = true;
+
+        const payload = {
+            action: "chat",
+            sessionId: currentSessionId, 
+            message: message,
+            personaId: activePersona, 
+            history: chatHistory,
+            activeModel: activeSessionModel 
+        };
+
+        for (let i = 0; i <= retries; i++) {
+            try {
+                const response = await fetch(WEBHOOK_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain" },
+                    body: JSON.stringify(payload)
+                });
+
+                // ตรวจสอบว่า Google Apps Script คืนค่าสถานะปกติหรือไม่
+                if (!response.ok) throw new Error("HTTP Error " + response.status);
+
+                const data = await response.json();
+                
+                if(data.error) {
+                    if (data.error.includes("QUOTA_EXCEEDED") || data.type === "API_LIMIT") {
+                        startCooldown(15); 
+                        return; // ถ้าโควต้าเต็มให้ออกไปพักเครื่อง ไม่ต้องวนลูปยิงซ้ำ
+                    }
+                    throw new Error(data.error); 
+                }
+
+                if (data.used_model) {
+                    activeSessionModel = data.used_model;
+                }
+
+                addMessage(data.customer_reply, 'ai');
+                speakText(data.customer_reply); 
+                
+                chatHistory += `\nพนักงาน: ${message}\nลูกค้า: ${data.customer_reply}`;
+                let modelName = activeSessionModel ? activeSessionModel.replace("models/", "") : "gemini";
+                statusText.innerText = `พร้อมใช้งาน (ล็อกใช้โมเดล: ${modelName})`;
+                
+                micBtn.disabled = false;
+                endBtn.disabled = false;
+                return; // เมื่อทำงานสำเร็จ ให้ออกจากฟังก์ชันทันที
+
+            } catch (error) {
+                // ถ้ายังเหลือโควต้าให้ลองยิงซ้ำ จะรอ 2 วินาทีแล้วไปต่อ
+                if (i < retries) {
+                    statusText.innerText = `สัญญาณขัดข้อง กำลังพยายามเชื่อมต่อใหม่ (ครั้งที่ ${i + 1})...`;
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                } else {
+                    // ถ้ายิงซ้ำครบ 2 ครั้งแล้วยังไม่ได้ ค่อยแจ้ง Error ให้พนักงานทราบ
+                    statusText.innerText = "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ โปรดตรวจสอบอินเทอร์เน็ตแล้วลองกดพูดใหม่";
+                    micBtn.disabled = false;
+                    endBtn.disabled = false;
+                }
+            }
+        }
+    }
+
+    // ฟังก์ชันใหม่: หน่วงเวลาปุ่มไมค์
+    function startCooldown(seconds) {
+        let timeLeft = seconds;
+        micBtn.disabled = true;
+        endBtn.disabled = true;
+        micBtn.style.backgroundColor = "#999"; 
+        
+        let timer = setInterval(() => {
+            statusText.innerText = `เซิร์ฟเวอร์คิวเต็ม กรุณารอ ${timeLeft} วินาที...`;
+            micBtn.innerText = `รอสักครู่ (${timeLeft}s)`;
+            timeLeft--;
+
+            if (timeLeft < 0) {
+                clearInterval(timer);
+                micBtn.disabled = false;
+                endBtn.disabled = false;
+                micBtn.style.backgroundColor = "#34a853";
+                micBtn.innerText = "🎤 กดเพื่อพูดโต้ตอบ";
+                statusText.innerText = "พร้อมใช้งานอีกครั้ง";
+            }
+        }, 1000);
+    }
+
+    async function endConversation() {
+        if (!chatHistory) {
+            alert("คุณยังไม่ได้เริ่มการสนทนาเลยครับ");
+            return;
+        }
+        
+        micBtn.disabled = true;
+        endBtn.disabled = true;
+        statusText.innerText = "กรรมการกำลังประเมินผลการสอบ กรุณารอสักครู่...";
+
+        const payload = { 
+            action: "evaluate", 
+            sessionId: currentSessionId, 
+            history: chatHistory,
+            staffId: staffIdInput.value,
+            staffName: staffNameInput.value,
+            personaId: activePersona,
+            activeModel: activeSessionModel 
+        };
+
+        try {
+            const response = await fetch(WEBHOOK_URL, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain" },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+            
+            feedbackBox.style.display = "block";
+            
+            // 🌟 เพิ่มการดักจับข้อความ: ถ้า data.summary หายไป ให้แสดงข้อความสำรองแทน
+            let summaryText = data.summary || "ระบบไม่สามารถสร้างคำอธิบายได้ โปรดลองทดสอบใหม่อีกครั้ง";
+            
+            if (data.is_pass) {
+                feedbackBox.style.backgroundColor = "#d4edda";
+                feedbackBox.style.color = "#155724";
+                feedbackBox.innerHTML = `✅ <b>สอบผ่านเกณฑ์!</b><br><br>${summaryText}`;
+            } else {
+                feedbackBox.style.backgroundColor = "#f8d7da";
+                feedbackBox.style.color = "#721c24";
+                feedbackBox.innerHTML = `❌ <b>ยังไม่ผ่านเกณฑ์</b><br><br>${summaryText}`;
+            }
+            
+            // (ถ้าคุณมีฟังก์ชัน addMessage แจ้งผลในแชทด้วย ก็ให้ใช้ตัวแปร summaryText เช่นกัน)
+            addMessage(`📊 ผลการประเมิน:\n${summaryText}`, 'ai');
+            
+            statusText.innerText = "การสอบเสร็จสิ้น (กรุณารีเฟรชหน้าเว็บเพื่อเริ่มใหม่)";
+            
+            chatHistory = "";
+            activeSessionModel = null; 
+            currentSessionId = "SES-" + Date.now(); 
+
+        } catch (error) {
+            statusText.innerText = "เกิดข้อผิดพลาดในการดึงผลสอบ";
+            micBtn.disabled = false;
+            endBtn.disabled = false;
+        }
+    }
+
+    function addMessage(text, sender) {
+        const div = document.createElement('div');
+        div.className = `msg ${sender}`;
+        div.innerText = text;
+        chatBox.appendChild(div);
+        chatBox.scrollTop = chatBox.scrollHeight; 
+    }
+
+    function speakText(text) {
+        if ('speechSynthesis' in window) {
+            // ฟิลเตอร์รีดข้อความ: ลบเว้นวรรคซ้ำซ้อนและสัญลักษณ์ที่ทำให้เสียงสะดุด
+            let speakableText = text.replace(/[\n\r]+/g, ' ') 
+                                    .replace(/\s{2,}/g, ' ')  
+                                    .replace(/["'”’“‘]/g, '')
+                                    .replace(/\.\.\./g, '')
+                                    .trim();
+
+            const utterance = new SpeechSynthesisUtterance(speakableText);
+            utterance.lang = 'th-TH'; 
+            utterance.rate = 1.15; 
+            
+            const voices = window.speechSynthesis.getVoices();
+            const thaiVoice = voices.find(voice => voice.lang === 'th-TH');
+            if(thaiVoice) utterance.voice = thaiVoice;
+
+            window.speechSynthesis.speak(utterance);
+        }
+    }
+</script>
+
+</body>
+</html>
