@@ -32,7 +32,6 @@
         button { 
             border: none; padding: 15px; border-radius: 50px; font-size: 16px; font-weight: bold; 
             cursor: pointer; transition: 0.3s; width: 100%; box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-            /* 🌟 ป้องกันการคลุมดำและเมนูเด้งบนมือถือ */
             user-select: none; 
             -webkit-user-select: none; 
             -webkit-touch-callout: none; 
@@ -91,11 +90,11 @@
     recognition.interimResults = false;
 
     let isRecording = false;
+    let isProcessing = false; // 🌟 เพิ่มตัวแปรป้องกันการส่ง request ซ้ำซ้อน
     let chatHistory = "";
     let activeSessionModel = null; 
     let currentSessionId = "SES-" + Date.now(); 
     
-    // สำคัญ: นำ Web URL จาก Apps Script ล่าสุดของคุณมาวางตรงนี้
     const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbz8W7ERBSkuqdoJqv19cs3rf02Qo7w14cnU22tDe5w8-LA4tcSPe3ejzEc-v9hYOow6Rw/exec";
 
     const micBtn = document.getElementById('micBtn');
@@ -136,17 +135,17 @@
     staffIdInput.addEventListener('blur', pingServer);
     staffNameInput.addEventListener('blur', pingServer);
 
-    // 🌟 อัปเดตการรองรับมือถืออย่างสมบูรณ์แบบ
     micBtn.addEventListener('mousedown', startRecording);
     micBtn.addEventListener('mouseup', stopRecording);
-    micBtn.addEventListener('mouseleave', stopRecording); // ดักเมาส์ลากออกนอกปุ่ม
+    micBtn.addEventListener('mouseleave', stopRecording);
     
     micBtn.addEventListener('touchstart', startRecording, {passive: false});
     micBtn.addEventListener('touchend', stopRecording, {passive: false});
-    micBtn.addEventListener('touchcancel', stopRecording, {passive: false}); // ดักสายเข้า/จอดับ
+    micBtn.addEventListener('touchcancel', stopRecording, {passive: false});
 
     function startRecording(e) {
         if(e) e.preventDefault(); 
+        if (isProcessing) return; // 🌟 ถ้ากำลังประเมินหรือรอตอบ ห้ามอัดเสียงซ้ำ
         if (!staffIdInput.value || !staffNameInput.value) {
             alert("กรุณากรอกรหัสพนักงานและชื่อให้ครบถ้วนก่อนเริ่มสอบครับ");
             return;
@@ -172,8 +171,9 @@
 
     recognition.onresult = function(event) {
         const transcript = event.results[0][0].transcript;
-        addMessage(transcript, 'staff');
+        if (!transcript.trim()) return;
         
+        addMessage(transcript, 'staff');
         sendToAI(transcript);
     };
 
@@ -187,6 +187,9 @@
     };
 
     async function sendToAI(message, retries = 2) {
+        if (isProcessing) return; // 🌟 ป้องกันการยิงซ้ำถ้าคำสั่งเดิมยังไม่เสร็จ
+        isProcessing = true;
+
         statusText.innerText = "ลูกค้ากำลังคิดคำตอบ...";
         micBtn.disabled = true;
         endBtn.disabled = true;
@@ -200,58 +203,60 @@
             activeModel: activeSessionModel 
         };
 
-        for (let i = 0; i <= retries; i++) {
-            try {
-                const response = await fetch(WEBHOOK_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "text/plain" },
-                    body: JSON.stringify(payload)
-                });
+        try {
+            for (let i = 0; i <= retries; i++) {
+                try {
+                    const response = await fetch(WEBHOOK_URL, {
+                        method: "POST",
+                        headers: { "Content-Type": "text/plain" },
+                        body: JSON.stringify(payload)
+                    });
 
-                if (!response.ok) throw new Error("HTTP Error " + response.status);
+                    if (!response.ok) throw new Error("HTTP Error " + response.status);
 
-                const data = await response.json();
-                
-                if(data.error) {
-                    if (data.error.includes("QUOTA_EXCEEDED") || data.type === "API_LIMIT") {
-                        startCooldown(15); 
-                        return;
+                    const data = await response.json();
+                    
+                    if(data.error) {
+                        if (data.error.includes("QUOTA_EXCEEDED") || data.type === "API_LIMIT") {
+                            startCooldown(15); 
+                            return;
+                        }
+                        throw new Error(data.error); 
                     }
-                    throw new Error(data.error); 
-                }
 
-                if (data.used_model) {
-                    activeSessionModel = data.used_model;
-                }
+                    if (data.used_model) {
+                        activeSessionModel = data.used_model;
+                    }
 
-                addMessage(data.customer_reply, 'ai');
-                speakText(data.customer_reply); 
-                
-                chatHistory += `\nพนักงาน: ${message}\nลูกค้า: ${data.customer_reply}`;
-                let modelName = activeSessionModel ? activeSessionModel.replace("models/", "") : "gemini";
-                statusText.innerText = `พร้อมใช้งาน (ล็อกใช้โมเดล: ${modelName})`;
-                
-                micBtn.disabled = false;
-                endBtn.disabled = false;
-                return;
+                    addMessage(data.customer_reply, 'ai');
+                    speakText(data.customer_reply); 
+                    
+                    chatHistory += `\nพนักงาน: ${message}\nลูกค้า: ${data.customer_reply}`;
+                    let modelName = activeSessionModel ? activeSessionModel.replace("models/", "") : "gemini";
+                    statusText.innerText = `พร้อมใช้งาน (ล็อกใช้โมเดล: ${modelName})`;
+                    return;
 
-            } catch (error) {
-                if (i < retries) {
-                    statusText.innerText = `สัญญาณขัดข้อง กำลังพยายามเชื่อมต่อใหม่ (ครั้งที่ ${i + 1})...`;
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                } else {
-                    statusText.innerText = "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ โปรดตรวจสอบอินเทอร์เน็ตแล้วลองกดพูดใหม่";
-                    micBtn.disabled = false;
-                    endBtn.disabled = false;
+                } catch (error) {
+                    if (i < retries) {
+                        statusText.innerText = `สัญญาณขัดข้อง กำลังพยายามเชื่อมต่อใหม่ (ครั้งที่ ${i + 1})...`;
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                    } else {
+                        statusText.innerText = "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ โปรดตรวจสอบอินเทอร์เน็ตแล้วลองกดพูดใหม่";
+                    }
                 }
             }
+        } finally {
+            // 🌟 ล็อกคืนค่าเสมอไม่ว่าจะสำเร็จหรือล้มเหลว
+            isProcessing = false;
+            micBtn.disabled = false;
+            endBtn.disabled = false;
         }
     }
 
     function startCooldown(seconds) {
         speakText("ขออภัยค่ะ คิวระบบเต็ม รบกวนรอสักครู่นะคะ"); 
         
-        let timeLeft = 7; // ลดเวลาจาก 15 เหลือ 7 วินาที
+        let timeLeft = 7;
         micBtn.disabled = true;
         endBtn.disabled = true;
         micBtn.style.backgroundColor = "#999"; 
@@ -263,6 +268,7 @@
 
             if (timeLeft < 0) {
                 clearInterval(timer);
+                isProcessing = false;
                 micBtn.disabled = false;
                 endBtn.disabled = false;
                 micBtn.style.backgroundColor = "#34a853";
@@ -277,6 +283,9 @@
             alert("คุณยังไม่ได้เริ่มการสนทนาเลยครับ");
             return;
         }
+
+        if (isProcessing) return;
+        isProcessing = true;
         
         micBtn.disabled = true;
         endBtn.disabled = true;
@@ -292,49 +301,53 @@
             activeModel: activeSessionModel 
         };
 
-        for (let i = 0; i <= retries; i++) {
-            try {
-                const response = await fetch(WEBHOOK_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "text/plain" },
-                    body: JSON.stringify(payload)
-                });
+        try {
+            for (let i = 0; i <= retries; i++) {
+                try {
+                    const response = await fetch(WEBHOOK_URL, {
+                        method: "POST",
+                        headers: { "Content-Type": "text/plain" },
+                        body: JSON.stringify(payload)
+                    });
 
-                const data = await response.json();
-                
-                if (data.error) throw new Error(data.error);
+                    const data = await response.json();
+                    
+                    if (data.error) throw new Error(data.error);
 
-                feedbackBox.style.display = "block";
-                let summaryText = data.summary || "ระบบไม่สามารถสร้างคำอธิบายได้ โปรดลองทดสอบใหม่อีกครั้ง";
-                
-                if (data.is_pass) {
-                    feedbackBox.style.backgroundColor = "#d4edda";
-                    feedbackBox.style.color = "#155724";
-                    feedbackBox.innerHTML = `✅ <b>สอบผ่านเกณฑ์!</b><br><br>${summaryText}`;
-                } else {
-                    feedbackBox.style.backgroundColor = "#f8d7da";
-                    feedbackBox.style.color = "#721c24";
-                    feedbackBox.innerHTML = `❌ <b>ยังไม่ผ่านเกณฑ์</b><br><br>${summaryText}`;
-                }
-                
-                addMessage(`📊 ผลการประเมิน:\n${summaryText}`, 'ai');
-                statusText.innerText = "การสอบเสร็จสิ้น (กรุณารีเฟรชหน้าเว็บเพื่อเริ่มใหม่)";
-                
-                chatHistory = "";
-                activeSessionModel = null; 
-                currentSessionId = "SES-" + Date.now(); 
-                return; 
+                    feedbackBox.style.display = "block";
+                    let summaryText = data.summary || "ระบบไม่สามารถสร้างคำอธิบายได้ โปรดลองทดสอบใหม่อีกครั้ง";
+                    
+                    if (data.is_pass) {
+                        feedbackBox.style.backgroundColor = "#d4edda";
+                        feedbackBox.style.color = "#155724";
+                        feedbackBox.innerHTML = `✅ <b>สอบผ่านเกณฑ์!</b><br><br>${summaryText}`;
+                    } else {
+                        feedbackBox.style.backgroundColor = "#f8d7da";
+                        feedbackBox.style.color = "#721c24";
+                        feedbackBox.innerHTML = `❌ <b>ยังไม่ผ่านเกณฑ์</b><br><br>${summaryText}`;
+                    }
+                    
+                    addMessage(`📊 ผลการประเมิน:\n${summaryText}`, 'ai');
+                    statusText.innerText = "การสอบเสร็จสิ้น (กรุณารีเฟรชหน้าเว็บเพื่อเริ่มใหม่)";
+                    
+                    chatHistory = "";
+                    activeSessionModel = null; 
+                    currentSessionId = "SES-" + Date.now(); 
+                    return; 
 
-            } catch (error) {
-                if (i < retries) {
-                    statusText.innerText = `คิวเต็ม... กำลังทบทวนผลสอบใหม่ (ครั้งที่ ${i + 1})`;
-                    await new Promise(resolve => setTimeout(resolve, 3000));
-                } else {
-                    statusText.innerText = "เซิร์ฟเวอร์คิวเต็ม! โปรดลองกดปุ่ม [จบการสนทนา] ใหม่อีกครั้ง";
-                    micBtn.disabled = false;
-                    endBtn.disabled = false;
+                } catch (error) {
+                    if (i < retries) {
+                        statusText.innerText = `คิวเต็ม... กำลังทบทวนผลสอบใหม่ (ครั้งที่ ${i + 1})`;
+                        await new Promise(resolve => setTimeout(resolve, 3000));
+                    } else {
+                        statusText.innerText = "เซิร์ฟเวอร์คิวเต็ม! โปรดลองกดปุ่ม [จบการสนทนา] ใหม่อีกครั้ง";
+                    }
                 }
             }
+        } finally {
+            isProcessing = false;
+            micBtn.disabled = false;
+            endBtn.disabled = false;
         }
     }
 
