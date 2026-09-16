@@ -29,7 +29,15 @@
         .msg.staff { background-color: #1a73e8; color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
         .msg.ai { background-color: #e4e6eb; color: black; align-self: flex-start; border-bottom-left-radius: 2px; }
         .controls { display: flex; flex-direction: column; gap: 10px; }
-        button { border: none; padding: 15px; border-radius: 50px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; width: 100%; box-shadow: 0 4px 6px rgba(0,0,0,0.1); user-select: none; -webkit-user-select: none; }
+        button { 
+            border: none; padding: 15px; border-radius: 50px; font-size: 16px; font-weight: bold; 
+            cursor: pointer; transition: 0.3s; width: 100%; box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+            /* 🌟 ป้องกันการคลุมดำและเมนูเด้งบนมือถือ */
+            user-select: none; 
+            -webkit-user-select: none; 
+            -webkit-touch-callout: none; 
+            touch-action: manipulation; 
+        }
         #micBtn { background-color: #34a853; color: white; }
         #micBtn:hover { background-color: #2b8242; }
         #micBtn.recording { background-color: #ea4335; animation: pulse 1.5s infinite; }
@@ -128,10 +136,14 @@
     staffIdInput.addEventListener('blur', pingServer);
     staffNameInput.addEventListener('blur', pingServer);
 
+    // 🌟 อัปเดตการรองรับมือถืออย่างสมบูรณ์แบบ
     micBtn.addEventListener('mousedown', startRecording);
     micBtn.addEventListener('mouseup', stopRecording);
-    micBtn.addEventListener('touchstart', startRecording, {passive: true});
-    micBtn.addEventListener('touchend', stopRecording, {passive: true});
+    micBtn.addEventListener('mouseleave', stopRecording); // ดักเมาส์ลากออกนอกปุ่ม
+    
+    micBtn.addEventListener('touchstart', startRecording, {passive: false});
+    micBtn.addEventListener('touchend', stopRecording, {passive: false});
+    micBtn.addEventListener('touchcancel', stopRecording, {passive: false}); // ดักสายเข้า/จอดับ
 
     function startRecording(e) {
         if(e) e.preventDefault(); 
@@ -260,7 +272,6 @@
         }, 1000);
     }
 
-    // 🌟 เพิ่มระบบ retries (ยิงซ้ำ) ให้กรรมการประเมินเหมือนตอนแชท
     async function endConversation(retries = 2) {
         if (!chatHistory) {
             alert("คุณยังไม่ได้เริ่มการสนทนาเลยครับ");
@@ -291,7 +302,6 @@
 
                 const data = await response.json();
                 
-                // 🌟 ดัก Error: ถ้ากรรมการเจอปัญหาคิวเต็ม ให้โยนเข้า Catch เพื่อลองใหม่
                 if (data.error) throw new Error(data.error);
 
                 feedbackBox.style.display = "block";
@@ -313,15 +323,13 @@
                 chatHistory = "";
                 activeSessionModel = null; 
                 currentSessionId = "SES-" + Date.now(); 
-                return; // สำเร็จแล้วออกจากลูปเลย
+                return; 
 
             } catch (error) {
-                // ถ้ายังเหลือโควต้าให้ยิงซ้ำ จะรอ 3 วินาทีแล้วลองใหม่เงียบๆ
                 if (i < retries) {
                     statusText.innerText = `คิวเต็ม... กำลังทบทวนผลสอบใหม่ (ครั้งที่ ${i + 1})`;
                     await new Promise(resolve => setTimeout(resolve, 3000));
                 } else {
-                    // ถ้าลองครบ 3 ครั้งแล้วยังไม่ได้ ค่อยเปิดปุ่มให้พนักงานกดประเมินใหม่เอง
                     statusText.innerText = "เซิร์ฟเวอร์คิวเต็ม! โปรดลองกดปุ่ม [จบการสนทนา] ใหม่อีกครั้ง";
                     micBtn.disabled = false;
                     endBtn.disabled = false;
@@ -340,7 +348,6 @@
 
     function speakText(text) {
         if ('speechSynthesis' in window) {
-            // ยังคงคำสั่งนี้ไว้ เพื่อตัดเสียงเก่าที่อาจจะยังพูดไม่จบออกทันทีเมื่อประโยคใหม่มาถึง
             window.speechSynthesis.cancel(); 
             
             let speakableText = text.replace(/[\n\r]+/g, ' ') 
