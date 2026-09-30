@@ -229,12 +229,7 @@
                     }
 
                     addMessage(data.customer_reply, 'ai');
-                    // 🌟 ตรวจสอบว่ามีไฟล์เสียงส่งมาไหม ถ้ามีให้เล่นไฟล์เสียง ถ้าไม่มีใช้ TTS แทน
-                    if (data.audio_base64) {
-                        playGeminiAudio(data.audio_base64, data.customer_reply);
-                    } else {
-                        speakText(data.customer_reply); 
-                    }
+                    speakText(data.customer_reply); // ใช้เสียงเบราว์เซอร์อ่านทันทีที่ได้ข้อความ
                     
                     chatHistory += `\nพนักงาน: ${message}\nลูกค้า: ${data.customer_reply}`;
                     let modelName = activeSessionModel ? activeSessionModel.replace("models/", "") : "gemini";
@@ -385,49 +380,7 @@
             window.speechSynthesis.speak(utterance);
         }
     }
-   // 🌟 เครื่องเล่นเสียงสำหรับถอดรหัส 24kHz Raw PCM จาก Gemini
-    async function playGeminiAudio(base64PCM, fallbackText) {
-        try {
-            // รองรับทั้ง iOS Safari และ Android Chrome
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            const audioCtx = new AudioContext();
-            
-            // แปลง Base64 เป็น ArrayBuffer
-            const binaryString = window.atob(base64PCM);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            
-            // แปลงข้อมูลเสียงดิบเป็น Float32 สำหรับ Web Audio API
-            const int16Array = new Int16Array(bytes.buffer);
-            const float32Array = new Float32Array(int16Array.length);
-            for (let i = 0; i < int16Array.length; i++) {
-                float32Array[i] = int16Array[i] / 32768.0;
-            }
-            
-            // สร้างบัฟเฟอร์เสียง 24,000 Hz ตามมาตรฐาน Gemini
-            const audioBuffer = audioCtx.createBuffer(1, float32Array.length, 24000);
-            audioBuffer.getChannelData(0).set(float32Array);
-            
-            // สั่งเล่นเสียง
-            const source = audioCtx.createBufferSource();
-            source.buffer = audioBuffer;
-            source.connect(audioCtx.destination);
-            source.start(0);
-            
-            // ตัดเสียงเดิมที่ค้างอยู่ (ถ้าพนักงานกดพูดแทรก)
-            if (window.currentAudioSource) {
-                try { window.currentAudioSource.stop(); } catch(e){}
-            }
-            window.currentAudioSource = source;
-
-        } catch (err) {
-            console.error("Audio Decode Error:", err);
-            speakText(fallbackText); // ถ้าเครื่องเล่นพัง ให้หุ่นยนต์ TTS อ่านแทนทันที (Fail-safe)
-        }
-    } 
-</script>
+   </script>
 
 </body>
 </html>
