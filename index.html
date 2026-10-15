@@ -342,8 +342,12 @@
             
             if(data.error) throw new Error(data.error); 
 
-            addMessage(data.customer_reply, 'ai');
-            speakText(data.customer_reply, data.gender); // ส่งเพศไปเลือกเสียง
+           addMessage(data.customer_reply, 'ai');
+                if (data.audio_base64) {
+                    playGeminiAudio(data.audio_base64, data.customer_reply);
+                } else {
+                    speakText(data.customer_reply); // แผนสำรองถ้าโหลดเสียงไม่ติด
+                }
             
             chatHistory += `\nพนักงาน: ${message}\nลูกค้า: ${data.customer_reply}`;
             statusText.innerText = `พร้อมใช้งาน`;
@@ -456,6 +460,38 @@
             }
 
             window.speechSynthesis.speak(utterance);
+        }
+    }
+    
+    async function playGeminiAudio(base64PCM, fallbackText) {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            const audioCtx = new AudioContext();
+            
+            const binaryString = window.atob(base64PCM);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+            
+            const int16Array = new Int16Array(bytes.buffer);
+            const float32Array = new Float32Array(int16Array.length);
+            for (let i = 0; i < int16Array.length; i++) float32Array[i] = int16Array[i] / 32768.0;
+            
+            const audioBuffer = audioCtx.createBuffer(1, float32Array.length, 24000);
+            audioBuffer.getChannelData(0).set(float32Array);
+            
+            const source = audioCtx.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(audioCtx.destination);
+            source.start(0);
+            
+            if (window.currentAudioSource) {
+                try { window.currentAudioSource.stop(); } catch(e){}
+            }
+            window.currentAudioSource = source;
+
+        } catch (err) {
+            console.error("Audio Decode Error:", err);
+            speakText(fallbackText);
         }
     }
 </script>
