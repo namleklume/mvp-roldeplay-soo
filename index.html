@@ -5,53 +5,170 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Roleplay: ระบบสอบมาตรฐานบริการ</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .container { max-width: 500px; width: 100%; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        h2 { text-align: center; color: #1a73e8; margin-top: 0; }
-        .form-group { display: flex; gap: 10px; margin-bottom: 15px; }
-        input { padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; width: 100%; box-sizing: border-box; }
-        
-        .instructions {
-            background-color: #e8f0fe;
-            color: #1967d2;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            font-size: 14px;
-            line-height: 1.6;
-            border-left: 4px solid #1a73e8;
+        /* 🌟 Reset & Minimal Typography */
+        * { box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            background-color: #fafafa; 
+            color: #222;
+            margin: 0; 
+            padding: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            min-height: 100vh;
         }
-        .instructions ol { margin: 10px 0 0 0; padding-left: 25px; }
-        .instructions li { margin-bottom: 5px; }
         
-        .chat-box { height: 350px; border: 1px solid #ddd; border-radius: 8px; padding: 15px; overflow-y: auto; background-color: #fafafa; margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; }
-        .msg { padding: 10px 15px; border-radius: 20px; max-width: 80%; line-height: 1.4; font-size: 14px; }
-        .msg.staff { background-color: #1a73e8; color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
-        .msg.ai { background-color: #e4e6eb; color: black; align-self: flex-start; border-bottom-left-radius: 2px; }
-        .controls { display: flex; flex-direction: column; gap: 10px; }
+        /* 🌟 Container Style */
+        .container { 
+            max-width: 500px; 
+            width: 100%; 
+            background: #ffffff; 
+            padding: 24px; 
+            border-radius: 16px; 
+            border: 1px solid #eaeaea;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.04); 
+        }
+        
+        h2 { 
+            text-align: center; 
+            font-weight: 600; 
+            font-size: 20px;
+            color: #111; 
+            margin: 0 0 20px 0; 
+            letter-spacing: -0.5px;
+        }
+        
+        /* 🌟 Inputs */
+        .form-group { display: flex; gap: 12px; margin-bottom: 20px; }
+        input { 
+            padding: 14px; 
+            border: 1px solid #e1e1e1; 
+            background-color: #fcfcfc;
+            border-radius: 10px; 
+            font-size: 14px; 
+            width: 100%; 
+            transition: all 0.2s ease;
+            outline: none;
+        }
+        input:focus { border-color: #222; background-color: #fff; }
+        
+        /* 🌟 Clean Instructions Box */
+        .instructions {
+            background-color: #f7f7f8;
+            color: #555;
+            padding: 16px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            line-height: 1.6;
+            border: 1px solid #eee;
+        }
+        .instructions strong { color: #111; display: block; margin-bottom: 8px; }
+        .instructions ol { margin: 0; padding-left: 20px; }
+        .instructions li { margin-bottom: 4px; }
+        
+        /* 🌟 Minimal Chat Box */
+        .chat-box { 
+            height: 380px; 
+            border: 1px solid #eaeaea; 
+            border-radius: 12px; 
+            padding: 16px; 
+            overflow-y: auto; 
+            background-color: #fff; 
+            margin-bottom: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 12px; 
+        }
+        .msg { 
+            padding: 12px 16px; 
+            max-width: 85%; 
+            line-height: 1.5; 
+            font-size: 14px; 
+        }
+        .msg.staff { 
+            background-color: #222; 
+            color: #fff; 
+            align-self: flex-end; 
+            border-radius: 16px 16px 4px 16px; 
+        }
+        .msg.ai { 
+            background-color: #f4f4f5; 
+            color: #222; 
+            align-self: flex-start; 
+            border-radius: 16px 16px 16px 4px; 
+        }
+        
+        /* 🌟 Sleek Buttons */
+        .controls { display: flex; flex-direction: column; gap: 12px; }
         button { 
-            border: none; padding: 15px; border-radius: 50px; font-size: 16px; font-weight: bold; 
-            cursor: pointer; transition: 0.3s; width: 100%; box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+            border: none; 
+            padding: 16px; 
+            border-radius: 12px; 
+            font-size: 15px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            transition: all 0.2s ease; 
+            width: 100%; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
             user-select: none; 
             -webkit-user-select: none; 
             -webkit-touch-callout: none; 
             touch-action: manipulation; 
         }
-        #micBtn { background-color: #34a853; color: white; }
-        #micBtn:hover { background-color: #2b8242; }
-        #micBtn.recording { background-color: #ea4335; animation: pulse 1.5s infinite; }
-        #endBtn { background-color: #fbbc05; color: #333; }
-        #endBtn:hover { background-color: #e0a800; }
-        .status { text-align: center; font-size: 13px; color: #666; margin-top: 5px; min-height: 20px;}
-        #feedbackBox { display: none; margin-top: 20px; padding: 15px; border-radius: 8px; font-weight: 500; line-height: 1.5; font-size: 15px; }
         
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
+        #micBtn { 
+            background-color: #222; 
+            color: #fff; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        #micBtn:active { transform: scale(0.98); }
+        
+        #micBtn.recording { 
+            background-color: #ef4444; 
+            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+            animation: pulse-red 1.5s infinite; 
+        }
+        
+        #endBtn { 
+            background-color: transparent; 
+            color: #555; 
+            border: 1px solid #ddd;
+        }
+        #endBtn:active { background-color: #f9f9f9; transform: scale(0.98); }
+        
+        .status { 
+            text-align: center; 
+            font-size: 12px; 
+            color: #888; 
+            margin-top: 4px; 
+            min-height: 18px;
+        }
+        
+        #feedbackBox { 
+            display: none; 
+            margin-top: 20px; 
+            padding: 16px; 
+            border-radius: 12px; 
+            line-height: 1.6; 
+            font-size: 14px; 
+            border: 1px solid transparent;
+        }
+        
+        @keyframes pulse-red { 
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); } 
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } 
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>เข้าสู่ระบบสอบ Roleplay</h2>
+    <h2>AI Roleplay Session</h2>
     
     <div class="form-group">
         <input type="text" id="staffId" placeholder="รหัสพนักงาน" required>
@@ -59,21 +176,21 @@
     </div>
 
     <div class="instructions">
-        <strong>💡 วิธีการใช้งานระบบสอบ Roleplay:</strong>
+        <strong>💡 วิธีการใช้งาน:</strong>
         <ol>
-            <li>กรอกรหัสพนักงานและชื่อให้ครบถ้วน</li>
+            <li>กรอกรหัสและชื่อพนักงาน</li>
             <li><strong>กดปุ่มไมค์ค้างไว้</strong> เพื่อพูดโต้ตอบ และ <strong>ปล่อยนิ้ว</strong> เมื่อพูดจบ</li>
-            <li>เริ่มต้นบทสนทนาด้วยการกล่าวทักทาย เช่น <br><i>"ออโรร่า สวัสดีค่ะ/ครับ คุณลูกค้าดูสินค้าหมวดไหนดีคะ"</i></li>
+            <li>เริ่มต้นด้วยการทักทาย เช่น <i>"ออโรร่า สวัสดีค่ะ/ครับ..."</i></li>
         </ol>
     </div>
 
     <div class="chat-box" id="chatBox">
-        <div class="msg ai">ลูกค้าเดินเข้ามาในร้านแล้วครับ พร้อมแล้วกดค้างที่ปุ่มไมค์เพื่อกล่าวทักทายได้เลย!</div>
+        <div class="msg ai">ลูกค้าเดินเข้ามาในร้านแล้วครับ พร้อมแล้วกดค้างที่ปุ่มไมค์เพื่อกล่าวทักทายได้เลย</div>
     </div>
 
     <div class="controls">
         <button id="micBtn">🎤 กดค้างเพื่อพูด (ปล่อยเพื่อส่ง)</button>
-        <button id="endBtn" onclick="endConversation()">🛑 จบการสนทนาและดูผลสอบ</button>
+        <button id="endBtn" onclick="endConversation()">จบการสนทนาและดูผลประเมิน</button>
         <div class="status" id="statusText">พร้อมใช้งาน</div>
     </div>
     
@@ -90,12 +207,12 @@
     recognition.interimResults = false;
 
     let isRecording = false;
-    let isProcessing = false; // 🌟 เพิ่มตัวแปรป้องกันการส่ง request ซ้ำซ้อน
+    let isProcessing = false;
     let chatHistory = "";
-    let activeSessionModel = null; 
     let currentSessionId = "SES-" + Date.now(); 
     
-    const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbz8W7ERBSkuqdoJqv19cs3rf02Qo7w14cnU22tDe5w8-LA4tcSPe3ejzEc-v9hYOow6Rw/exec";
+    // ⚠️ นำ URL จาก Cloudflare Worker มาวางที่นี่
+    const WEBHOOK_URL = "https://aurora-roleplay-backend.pongporn-lek.workers.dev/";
 
     const micBtn = document.getElementById('micBtn');
     const endBtn = document.getElementById('endBtn');
@@ -105,6 +222,7 @@
     const staffIdInput = document.getElementById('staffId');
     const staffNameInput = document.getElementById('staffName');
 
+    // 🌟 ระบบ Pre-warming: ปลุกเซิร์ฟเวอร์แก้ปัญหาเว็บค้างไว้
     let isServerAwake = false;
 
     function pingServer() {
@@ -112,19 +230,20 @@
         
         fetch(WEBHOOK_URL, {
             method: "POST",
-            headers: { "Content-Type": "text/plain" },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ action: "wakeup" })
         })
         .then(response => response.json())
         .then(data => {
             if (data.status === "ready") {
                 isServerAwake = true;
-                console.log("✅ เซิร์ฟเวอร์วอร์มเครื่องพร้อมแล้ว!");
+                console.log("✅ Worker is ready!");
             }
         })
-        .catch(err => console.log("⏳ รอปลุกเซิร์ฟเวอร์รอบถัดไป..."));
+        .catch(err => console.log("⏳ Waiting for next ping..."));
     }
 
+    // ทำงานเมื่อโหลดเว็บ หรือ สลับแท็บกลับมา
     window.addEventListener('DOMContentLoaded', pingServer);
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
@@ -135,6 +254,7 @@
     staffIdInput.addEventListener('blur', pingServer);
     staffNameInput.addEventListener('blur', pingServer);
 
+    // 🌟 ระบบ Push-to-Talk สำหรับ PC และ Mobile
     micBtn.addEventListener('mousedown', startRecording);
     micBtn.addEventListener('mouseup', stopRecording);
     micBtn.addEventListener('mouseleave', stopRecording);
@@ -145,7 +265,7 @@
 
     function startRecording(e) {
         if(e) e.preventDefault(); 
-        if (isProcessing) return; // 🌟 ถ้ากำลังประเมินหรือรอตอบ ห้ามอัดเสียงซ้ำ
+        if (isProcessing) return; 
         if (!staffIdInput.value || !staffNameInput.value) {
             alert("กรุณากรอกรหัสพนักงานและชื่อให้ครบถ้วนก่อนเริ่มสอบครับ");
             return;
@@ -165,7 +285,7 @@
     recognition.onstart = function() {
         isRecording = true;
         micBtn.classList.add('recording');
-        micBtn.innerText = "🛑 กำลังฟัง... (ปล่อยปุ่มเพื่อส่ง)";
+        micBtn.innerText = "กำลังฟัง... (ปล่อยปุ่มเพื่อส่ง)";
         statusText.innerText = "กำลังรับฟังเสียงของคุณ...";
     };
 
@@ -186,8 +306,8 @@
         }
     };
 
-    async function sendToAI(message, retries = 2) {
-        if (isProcessing) return; // 🌟 ป้องกันการยิงซ้ำถ้าคำสั่งเดิมยังไม่เสร็จ
+    async function sendToAI(message) {
+        if (isProcessing) return; 
         isProcessing = true;
 
         statusText.innerText = "ลูกค้ากำลังคิดคำตอบ...";
@@ -199,86 +319,38 @@
             sessionId: currentSessionId, 
             message: message,
             personaId: activePersona, 
-            history: chatHistory,
-            activeModel: activeSessionModel 
+            history: chatHistory
         };
 
         try {
-            for (let i = 0; i <= retries; i++) {
-                try {
-                    const response = await fetch(WEBHOOK_URL, {
-                        method: "POST",
-                        headers: { "Content-Type": "text/plain" },
-                        body: JSON.stringify(payload)
-                    });
+            const response = await fetch(WEBHOOK_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
 
-                    if (!response.ok) throw new Error("HTTP Error " + response.status);
+            if (!response.ok) throw new Error("HTTP Error " + response.status);
 
-                    const data = await response.json();
-                    
-                    if(data.error) {
-                        if (data.error.includes("QUOTA_EXCEEDED") || data.type === "API_LIMIT") {
-                            startCooldown(15); 
-                            return;
-                        }
-                        throw new Error(data.error); 
-                    }
+            const data = await response.json();
+            
+            if(data.error) throw new Error(data.error); 
 
-                    if (data.used_model) {
-                        activeSessionModel = data.used_model;
-                    }
+            addMessage(data.customer_reply, 'ai');
+            speakText(data.customer_reply, data.gender); // ส่งเพศไปเลือกเสียง
+            
+            chatHistory += `\nพนักงาน: ${message}\nลูกค้า: ${data.customer_reply}`;
+            statusText.innerText = `พร้อมใช้งาน`;
 
-                    addMessage(data.customer_reply, 'ai');
-                    speakText(data.customer_reply); // ใช้เสียงเบราว์เซอร์อ่านทันทีที่ได้ข้อความ
-                    
-                    chatHistory += `\nพนักงาน: ${message}\nลูกค้า: ${data.customer_reply}`;
-                    let modelName = activeSessionModel ? activeSessionModel.replace("models/", "") : "gemini";
-                    statusText.innerText = `พร้อมใช้งาน (ล็อกใช้โมเดล: ${modelName})`;
-                    return;
-
-                } catch (error) {
-                    if (i < retries) {
-                        statusText.innerText = `สัญญาณขัดข้อง กำลังพยายามเชื่อมต่อใหม่ (ครั้งที่ ${i + 1})...`;
-                        await new Promise(resolve => setTimeout(resolve, 2000));
-                    } else {
-                        statusText.innerText = "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ โปรดตรวจสอบอินเทอร์เน็ตแล้วลองกดพูดใหม่";
-                    }
-                }
-            }
+        } catch (error) {
+            statusText.innerText = "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ ลองกดพูดใหม่อีกครั้ง";
         } finally {
-            // 🌟 ล็อกคืนค่าเสมอไม่ว่าจะสำเร็จหรือล้มเหลว
             isProcessing = false;
             micBtn.disabled = false;
             endBtn.disabled = false;
         }
     }
 
-    function startCooldown(seconds) {
-        speakText("ขออภัยค่ะ คิวระบบเต็ม รบกวนรอสักครู่นะคะ"); 
-        
-        let timeLeft = 7;
-        micBtn.disabled = true;
-        endBtn.disabled = true;
-        micBtn.style.backgroundColor = "#999"; 
-        
-        let timer = setInterval(() => {
-            statusText.innerText = `เซิร์ฟเวอร์คิวเต็ม กรุณารอ ${timeLeft} วินาที...`;
-            micBtn.innerText = `รอสักครู่ (${timeLeft}s)`;
-            timeLeft--;
-
-            if (timeLeft < 0) {
-                clearInterval(timer);
-                isProcessing = false;
-                micBtn.disabled = false;
-                endBtn.disabled = false;
-                micBtn.style.backgroundColor = "#34a853";
-                micBtn.innerText = "🎤 กดค้างเพื่อพูด (ปล่อยเพื่อส่ง)";
-                statusText.innerText = "พร้อมใช้งานอีกครั้ง";
-            }
-        }, 1000);
-    }
-
-    async function endConversation(retries = 2) {
+    async function endConversation() {
         if (!chatHistory) {
             alert("คุณยังไม่ได้เริ่มการสนทนาเลยครับ");
             return;
@@ -297,57 +369,46 @@
             history: chatHistory,
             staffId: staffIdInput.value,
             staffName: staffNameInput.value,
-            personaId: activePersona,
-            activeModel: activeSessionModel 
+            personaId: activePersona
         };
 
         try {
-            for (let i = 0; i <= retries; i++) {
-                try {
-                    const response = await fetch(WEBHOOK_URL, {
-                        method: "POST",
-                        headers: { "Content-Type": "text/plain" },
-                        body: JSON.stringify(payload)
-                    });
+            const response = await fetch(WEBHOOK_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
 
-                    const data = await response.json();
-                    
-                    if (data.error) throw new Error(data.error);
+            const data = await response.json();
+            if (data.error) throw new Error(data.error);
 
-                    feedbackBox.style.display = "block";
-                    let summaryText = data.summary || "ระบบไม่สามารถสร้างคำอธิบายได้ โปรดลองทดสอบใหม่อีกครั้ง";
-                    
-                    if (data.is_pass) {
-                        feedbackBox.style.backgroundColor = "#d4edda";
-                        feedbackBox.style.color = "#155724";
-                        feedbackBox.innerHTML = `✅ <b>สอบผ่านเกณฑ์!</b><br><br>${summaryText}`;
-                    } else {
-                        feedbackBox.style.backgroundColor = "#f8d7da";
-                        feedbackBox.style.color = "#721c24";
-                        feedbackBox.innerHTML = `❌ <b>ยังไม่ผ่านเกณฑ์</b><br><br>${summaryText}`;
-                    }
-                    
-                    addMessage(`📊 ผลการประเมิน:\n${summaryText}`, 'ai');
-                    statusText.innerText = "การสอบเสร็จสิ้น (กรุณารีเฟรชหน้าเว็บเพื่อเริ่มใหม่)";
-                    
-                    chatHistory = "";
-                    activeSessionModel = null; 
-                    currentSessionId = "SES-" + Date.now(); 
-                    return; 
-
-                } catch (error) {
-                    if (i < retries) {
-                        statusText.innerText = `คิวเต็ม... กำลังทบทวนผลสอบใหม่ (ครั้งที่ ${i + 1})`;
-                        await new Promise(resolve => setTimeout(resolve, 3000));
-                    } else {
-                        statusText.innerText = "เซิร์ฟเวอร์คิวเต็ม! โปรดลองกดปุ่ม [จบการสนทนา] ใหม่อีกครั้ง";
-                    }
-                }
+            feedbackBox.style.display = "block";
+            let summaryText = data.summary || "ระบบไม่สามารถสร้างคำอธิบายได้ โปรดลองทดสอบใหม่อีกครั้ง";
+            
+            if (data.is_pass) {
+                feedbackBox.style.backgroundColor = "#e8f5e9";
+                feedbackBox.style.borderColor = "#c8e6c9";
+                feedbackBox.style.color = "#2e7d32";
+                feedbackBox.innerHTML = `✅ <b>สอบผ่านเกณฑ์!</b><br><br>${summaryText}`;
+            } else {
+                feedbackBox.style.backgroundColor = "#ffebee";
+                feedbackBox.style.borderColor = "#ffcdd2";
+                feedbackBox.style.color = "#c62828";
+                feedbackBox.innerHTML = `❌ <b>ยังไม่ผ่านเกณฑ์</b><br><br>${summaryText}`;
             }
-        } finally {
-            isProcessing = false;
+            
+            addMessage(`📊 ผลการประเมิน:\n${summaryText}`, 'ai');
+            statusText.innerText = "การสอบเสร็จสิ้น (กรุณารีเฟรชหน้าเว็บเพื่อเริ่มใหม่)";
+            
+            chatHistory = "";
+            currentSessionId = "SES-" + Date.now(); 
+
+        } catch (error) {
+            statusText.innerText = "เกิดข้อผิดพลาดในการประเมินผล กรุณาลองใหม่อีกครั้ง";
             micBtn.disabled = false;
             endBtn.disabled = false;
+        } finally {
+            isProcessing = false;
         }
     }
 
@@ -359,7 +420,7 @@
         chatBox.scrollTop = chatBox.scrollHeight; 
     }
 
-    function speakText(text) {
+    function speakText(text, gender = 'female') {
         if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel(); 
             
@@ -372,15 +433,25 @@
             const utterance = new SpeechSynthesisUtterance(speakableText);
             utterance.lang = 'th-TH'; 
             utterance.rate = 1.15; 
+            utterance.pitch = gender === 'female' ? 1.2 : 0.8; 
             
             const voices = window.speechSynthesis.getVoices();
-            const thaiVoice = voices.find(voice => voice.lang === 'th-TH');
-            if(thaiVoice) utterance.voice = thaiVoice;
+            const thaiVoices = voices.filter(voice => voice.lang === 'th-TH' || voice.lang.includes('th'));
+
+            if (thaiVoices.length > 0) {
+                if (gender === 'female') {
+                    const femaleVoice = thaiVoices.find(v => v.name.includes('Female') || v.name.includes('Kanya') || v.name.includes('Premwadee') || v.name.includes('Google')) || thaiVoices[0];
+                    utterance.voice = femaleVoice;
+                } else {
+                    const maleVoice = thaiVoices.find(v => v.name.includes('Male') || v.name.includes('Niwat')) || thaiVoices[0];
+                    utterance.voice = maleVoice;
+                }
+            }
 
             window.speechSynthesis.speak(utterance);
         }
     }
-   </script>
+</script>
 
 </body>
 </html>
