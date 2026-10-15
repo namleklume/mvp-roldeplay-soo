@@ -175,7 +175,7 @@
         <input type="text" id="staffName" placeholder="ชื่อ-นามสกุล" required>
     </div>
 
-   <div class="instructions">
+    <div class="instructions">
         <strong>💡 วิธีการใช้งาน:</strong>
         <ol>
             <li>กรอกรหัสพนักงานและชื่อให้ครบถ้วน</li>
@@ -186,7 +186,7 @@
     </div>
 
     <div class="chat-box" id="chatBox">
-        <div class="msg ai">ลูกค้าเดินเข้ามาในร้านแล้วครับ พร้อมแล้วกดค้างที่ปุ่มไมค์เพื่อกล่าวทักทายได้เลย</div>
+        <div class="msg ai">ลูกค้าเดินเข้ามาในร้านแล้วครับ พร้อมแล้วแตะที่ปุ่มไมค์เพื่อกล่าวทักทายได้เลย!</div>
     </div>
 
     <div class="controls">
@@ -210,6 +210,7 @@
     let isRecording = false;
     let isProcessing = false;
     let chatHistory = "";
+    let activeSessionModel = null; 
     let currentSessionId = "SES-" + Date.now(); 
     
     // ⚠️ นำ URL จาก Cloudflare Worker มาวางที่นี่
@@ -223,7 +224,7 @@
     const staffIdInput = document.getElementById('staffId');
     const staffNameInput = document.getElementById('staffName');
 
-    // 🌟 ระบบ Pre-warming: ปลุกเซิร์ฟเวอร์แก้ปัญหาเว็บค้างไว้
+    // 🌟 ระบบ Pre-warming: ปลุกเซิร์ฟเวอร์
     let isServerAwake = false;
 
     function pingServer() {
@@ -241,10 +242,9 @@
                 console.log("✅ Worker is ready!");
             }
         })
-        .catch(err => console.log("⏳ Waiting for next ping..."));
+        .catch(err => console.log("⏳ รอปลุกเซิร์ฟเวอร์รอบถัดไป..."));
     }
 
-    // ทำงานเมื่อโหลดเว็บ หรือ สลับแท็บกลับมา
     window.addEventListener('DOMContentLoaded', pingServer);
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
@@ -255,13 +255,13 @@
     staffIdInput.addEventListener('blur', pingServer);
     staffNameInput.addEventListener('blur', pingServer);
 
-   // 🌟 ระบบ Toggle (แตะเพื่อเปิด/ปิดไมค์) พร้อมระบบสั่น
+    // 🌟 ระบบ Toggle (แตะเพื่อเปิด/ปิดไมค์)
     micBtn.addEventListener('click', toggleMic);
 
     function toggleMic(e) {
         if(e) e.preventDefault(); 
 
-        if (isProcessing) return; // ห้ามกดเล่นตอน AI กำลังคิด
+        if (isProcessing) return; 
 
         if (!staffIdInput.value || !staffNameInput.value) {
             alert("กรุณากรอกรหัสพนักงานและชื่อให้ครบถ้วนก่อนเริ่มสอบครับ");
@@ -269,16 +269,14 @@
         }
 
         if (isRecording) {
-            // ถ้ากำลังอัดเสียงอยู่ -> ให้หยุดอัดเพื่อส่งข้อมูล
             recognition.stop(); 
-            vibrateDevice(50); // สั่นเตือนว่าปิดไมค์แล้ว
+            vibrateDevice(50); 
         } else {
-            // ถ้ายังไม่ได้อัด -> ให้เริ่มเปิดไมค์อัดเสียง
             try { 
                 recognition.start(); 
-                vibrateDevice([50, 100, 50]); // สั่นเป็นจังหวะ 2 ครั้งเตือนว่าเปิดไมค์แล้ว
+                vibrateDevice([50, 100, 50]); 
                 
-                // 🌟 ปลดล็อกลำโพงมือถือ (Audio Unlock Trick) ตั้งแต่สัมผัสแรก
+                // ปลดล็อกลำโพงมือถือ
                 if ('speechSynthesis' in window) {
                     let unlockSpeech = new SpeechSynthesisUtterance('');
                     window.speechSynthesis.speak(unlockSpeech);
@@ -289,19 +287,23 @@
         }
     }
 
-    // ฟังก์ชันสั่งให้มือถือสั่น (ถ้ามือถือเครื่องนั้นรองรับ)
     function vibrateDevice(pattern) {
         if ("vibrate" in navigator) {
             navigator.vibrate(pattern);
         }
     }
 
-    // ปรับปรุง UI ตอนเริ่ม/หยุดอัด ให้สอดคล้องกับระบบ Toggle
     recognition.onstart = function() {
         isRecording = true;
         micBtn.classList.add('recording');
         micBtn.innerText = "🛑 กำลังฟัง... (แตะเพื่อหยุดและส่ง)";
         statusText.innerText = "กำลังรับฟังเสียงของคุณ...";
+    };
+
+    recognition.onresult = function(event) {
+        const transcript = event.results[0][0].transcript;
+        addMessage(transcript, 'staff');
+        sendToAI(transcript);
     };
 
     recognition.onend = function() {
@@ -313,7 +315,7 @@
         }
     };
 
-    async function sendToAI(message) {
+    async function sendToAI(message, retries = 2) {
         if (isProcessing) return; 
         isProcessing = true;
 
@@ -326,39 +328,89 @@
             sessionId: currentSessionId, 
             message: message,
             personaId: activePersona, 
-            history: chatHistory
+            history: chatHistory,
+            activeModel: activeSessionModel 
         };
 
-        try {
-            const response = await fetch(WEBHOOK_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
+        for (let i = 0; i <= retries; i++) {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000); 
 
-            if (!response.ok) throw new Error("HTTP Error " + response.status);
+                const response = await fetch(WEBHOOK_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
 
-            const data = await response.json();
-            
-            if(data.error) throw new Error(data.error); 
+                if (!response.ok) throw new Error("HTTP Error " + response.status);
 
-           addMessage(data.customer_reply, 'ai');
+                const data = await response.json();
+                
+                if(data.error) {
+                    if (data.error.includes("QUOTA_EXCEEDED") || data.type === "API_LIMIT") {
+                        startCooldown(15); 
+                        return;
+                    }
+                    throw new Error(data.error); 
+                }
+
+                if (data.used_model) activeSessionModel = data.used_model;
+
+                addMessage(data.customer_reply, 'ai');
                 if (data.audio_base64) {
                     playGeminiAudio(data.audio_base64, data.customer_reply);
                 } else {
-                    speakText(data.customer_reply); // แผนสำรองถ้าโหลดเสียงไม่ติด
+                    speakText(data.customer_reply); 
                 }
-            
-            chatHistory += `\nพนักงาน: ${message}\nลูกค้า: ${data.customer_reply}`;
-            statusText.innerText = `พร้อมใช้งาน`;
+                
+                chatHistory += `\nพนักงาน: ${message}\nลูกค้า: ${data.customer_reply}`;
+                let modelName = activeSessionModel ? activeSessionModel.replace("models/", "") : "gemini";
+                statusText.innerText = `พร้อมใช้งาน (ล็อกใช้โมเดล: ${modelName})`;
+                
+                isProcessing = false;
+                micBtn.disabled = false;
+                endBtn.disabled = false;
+                return;
 
-        } catch (error) {
-            statusText.innerText = "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ ลองกดพูดใหม่อีกครั้ง";
-        } finally {
-            isProcessing = false;
-            micBtn.disabled = false;
-            endBtn.disabled = false;
+            } catch (error) {
+                if (i < retries) {
+                    statusText.innerText = `สัญญาณขัดข้อง กำลังพยายามเชื่อมต่อใหม่ (ครั้งที่ ${i + 1})...`;
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                } else {
+                    statusText.innerText = "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ โปรดตรวจสอบอินเทอร์เน็ตแล้วลองพูดใหม่";
+                    isProcessing = false;
+                    micBtn.disabled = false;
+                    endBtn.disabled = false;
+                }
+            }
         }
+    }
+
+    function startCooldown(seconds) {
+        let timeLeft = seconds;
+        micBtn.disabled = true;
+        endBtn.disabled = true;
+        micBtn.style.backgroundColor = "#999"; 
+        
+        let timer = setInterval(() => {
+            statusText.innerText = `เซิร์ฟเวอร์คิวเต็ม กรุณารอ ${timeLeft} วินาที...`;
+            micBtn.innerText = `รอสักครู่ (${timeLeft}s)`;
+            timeLeft--;
+
+            if (timeLeft < 0) {
+                clearInterval(timer);
+                isProcessing = false; // 🌟 จุดสำคัญ: ต้องปลดล็อกตัวแปรนี้ด้วย
+                micBtn.disabled = false;
+                endBtn.disabled = false;
+                micBtn.style.backgroundColor = "#222";
+                micBtn.innerText = "🎤 แตะเพื่อพูด (แตะอีกครั้งเพื่อส่ง)";
+                statusText.innerText = "พร้อมใช้งานอีกครั้ง";
+            }
+        }, 1000);
     }
 
     async function endConversation() {
