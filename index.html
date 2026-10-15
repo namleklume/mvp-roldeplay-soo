@@ -175,11 +175,12 @@
         <input type="text" id="staffName" placeholder="ชื่อ-นามสกุล" required>
     </div>
 
-    <div class="instructions">
+   <div class="instructions">
         <strong>💡 วิธีการใช้งาน:</strong>
         <ol>
-            <li>กรอกรหัสและชื่อพนักงาน</li>
-            <li><strong>กดปุ่มไมค์ค้างไว้</strong> เพื่อพูดโต้ตอบ และ <strong>ปล่อยนิ้ว</strong> เมื่อพูดจบ</li>
+            <li>กรอกรหัสพนักงานและชื่อให้ครบถ้วน</li>
+            <li><strong>แตะปุ่มไมค์ 1 ครั้ง</strong> เพื่อเริ่มพูด (ปุ่มจะกะพริบสีแดง)</li>
+            <li><strong>แตะปุ่มเดิมอีก 1 ครั้ง</strong> เมื่อพูดจบ เพื่อส่งข้อความ</li>
             <li>เริ่มต้นด้วยการทักทาย เช่น <i>"ออโรร่า สวัสดีค่ะ/ครับ..."</i></li>
         </ol>
     </div>
@@ -189,8 +190,8 @@
     </div>
 
     <div class="controls">
-        <button id="micBtn">🎤 กดค้างเพื่อพูด (ปล่อยเพื่อส่ง)</button>
-        <button id="endBtn" onclick="endConversation()">จบการสนทนาและดูผลประเมิน</button>
+        <button id="micBtn">🎤 แตะเพื่อพูด (แตะอีกครั้งเพื่อส่ง)</button>
+        <button id="endBtn" onclick="endConversation()">🛑 จบการสนทนาและดูผลสอบ</button>
         <div class="status" id="statusText">พร้อมใช้งาน</div>
     </div>
     
@@ -254,53 +255,59 @@
     staffIdInput.addEventListener('blur', pingServer);
     staffNameInput.addEventListener('blur', pingServer);
 
-    // 🌟 ระบบ Push-to-Talk สำหรับ PC และ Mobile
-    micBtn.addEventListener('mousedown', startRecording);
-    micBtn.addEventListener('mouseup', stopRecording);
-    micBtn.addEventListener('mouseleave', stopRecording);
-    
-    micBtn.addEventListener('touchstart', startRecording, {passive: false});
-    micBtn.addEventListener('touchend', stopRecording, {passive: false});
-    micBtn.addEventListener('touchcancel', stopRecording, {passive: false});
+   // 🌟 ระบบ Toggle (แตะเพื่อเปิด/ปิดไมค์) พร้อมระบบสั่น
+    micBtn.addEventListener('click', toggleMic);
 
-    function startRecording(e) {
+    function toggleMic(e) {
         if(e) e.preventDefault(); 
-        if (isProcessing) return; 
+
+        if (isProcessing) return; // ห้ามกดเล่นตอน AI กำลังคิด
+
         if (!staffIdInput.value || !staffNameInput.value) {
             alert("กรุณากรอกรหัสพนักงานและชื่อให้ครบถ้วนก่อนเริ่มสอบครับ");
             return;
         }
-        if (!isRecording) {
-            try { recognition.start(); } catch(err) {}
-        }
-    }
 
-    function stopRecording(e) {
-        if(e) e.preventDefault();
         if (isRecording) {
+            // ถ้ากำลังอัดเสียงอยู่ -> ให้หยุดอัดเพื่อส่งข้อมูล
             recognition.stop(); 
+            vibrateDevice(50); // สั่นเตือนว่าปิดไมค์แล้ว
+        } else {
+            // ถ้ายังไม่ได้อัด -> ให้เริ่มเปิดไมค์อัดเสียง
+            try { 
+                recognition.start(); 
+                vibrateDevice([50, 100, 50]); // สั่นเป็นจังหวะ 2 ครั้งเตือนว่าเปิดไมค์แล้ว
+                
+                // 🌟 ปลดล็อกลำโพงมือถือ (Audio Unlock Trick) ตั้งแต่สัมผัสแรก
+                if ('speechSynthesis' in window) {
+                    let unlockSpeech = new SpeechSynthesisUtterance('');
+                    window.speechSynthesis.speak(unlockSpeech);
+                }
+            } catch(err) {
+                console.log("Mic start error:", err);
+            }
         }
     }
 
+    // ฟังก์ชันสั่งให้มือถือสั่น (ถ้ามือถือเครื่องนั้นรองรับ)
+    function vibrateDevice(pattern) {
+        if ("vibrate" in navigator) {
+            navigator.vibrate(pattern);
+        }
+    }
+
+    // ปรับปรุง UI ตอนเริ่ม/หยุดอัด ให้สอดคล้องกับระบบ Toggle
     recognition.onstart = function() {
         isRecording = true;
         micBtn.classList.add('recording');
-        micBtn.innerText = "กำลังฟัง... (ปล่อยปุ่มเพื่อส่ง)";
+        micBtn.innerText = "🛑 กำลังฟัง... (แตะเพื่อหยุดและส่ง)";
         statusText.innerText = "กำลังรับฟังเสียงของคุณ...";
-    };
-
-    recognition.onresult = function(event) {
-        const transcript = event.results[0][0].transcript;
-        if (!transcript.trim()) return;
-        
-        addMessage(transcript, 'staff');
-        sendToAI(transcript);
     };
 
     recognition.onend = function() {
         isRecording = false;
         micBtn.classList.remove('recording');
-        micBtn.innerText = "🎤 กดค้างเพื่อพูด (ปล่อยเพื่อส่ง)";
+        micBtn.innerText = "🎤 แตะเพื่อพูด (แตะอีกครั้งเพื่อส่ง)";
         if(statusText.innerText === "กำลังรับฟังเสียงของคุณ...") {
             statusText.innerText = "กำลังส่งข้อมูล...";
         }
