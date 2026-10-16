@@ -425,7 +425,7 @@
 
       <div class="start-bar">
         <button class="btn-primary" id="startBtn" type="button">เริ่มสอบ</button>
-        <p class="version-tag" id="versionTag">เวอร์ชัน 2.5</p>
+        <p class="version-tag" id="versionTag">เวอร์ชัน 2.6</p>
       </div>
     </div>
   </section>
@@ -535,7 +535,7 @@
   const TIMEOUT = { start: 8000, chat: 12000, tts: 20000, evaluate: 30000 };
   const CHAT_HISTORY_LINES = 8;
   const DEBUG = new URLSearchParams(location.search).has("debug");
-  const APP_VERSION = "2.5";
+  const APP_VERSION = "2.6";
   const QS = new URLSearchParams(location.search);
   // Text + voice in one request (network only, never touches the mic).
   // Falls back to chat + tts automatically if the Worker is older. Off: ?combined=0
@@ -745,6 +745,7 @@
   let rec = null, recActive = false, userStopped = false, fatalError = false;
   let committed = "", segmentFinal = "", interim = "", listenTimer = null;
   let startWatchdog = null, abortedCount = 0, silenceTimer = null, lastHeard = "";
+  let audioStarted = false, stopFallback = null;
 
   function createRecognizer() {
     const r = new SR();
@@ -753,8 +754,13 @@
     r.continuous = !isAndroid;
     r.maxAlternatives = 1;
 
-    r.onstart = () => { recActive = true; clearTimeout(startWatchdog); micTrace("start"); };
+    // Every handler ignores events from an older recognizer (late "end" events
+    // from the previous sentence must never cut the current one).
+    r.onstart = () => { if (r !== rec) return; recActive = true; micTrace("start"); };
+    r.onaudiostart = () => { if (r !== rec) return; audioStarted = true; micTrace("audio"); };
     r.onresult = (ev) => {
+      if (r !== rec) return;
+      audioStarted = true;
       let fin = "", tmp = "";
       for (let i = 0; i < ev.results.length; i++) {
         const t = ev.results[i][0].transcript;
@@ -766,6 +772,7 @@
       armAutoSend();
     };
     r.onerror = (ev) => {
+      if (r !== rec) return;
       micTrace("error:" + ev.error);
       if (ev.error === "not-allowed" || ev.error === "service-not-allowed") {
         fatalError = true;
@@ -787,14 +794,22 @@
       // "no-speech": handled in onend (restarts until the staff taps send)
     };
     r.onend = () => {
+      if (r !== rec) return;
       recActive = false;
+      clearTimeout(stopFallback);
       micTrace("end");
       // iOS sometimes never marks text as final: keep the interim text too
       committed = joinText(committed, segmentFinal || interim);
       segmentFinal = ""; interim = "";
       renderLive();
       if (state === "listening" && !userStopped && !fatalError) {
-        try { r.start(); return; } catch { /* fall through and finish */ }
+        if (isIOS) {
+          // iPhone: a restart without a tap is "deaf". Send what we have, or ask for a new tap.
+          if (committed.trim()) { finishListening(); return; }
+          setState("idle", "ไมค์หยุดฟังแล้ว แตะปุ่มแล้วพูดใหม่อีกครั้ง");
+          return;
+        }
+        try { r.start(); return; } catch { /* fall through and finish */ }   // Android/desktop: restart is fine
       }
       if (state === "listening") finishListening();
     };
@@ -804,26 +819,34 @@
   function startListening() {
     if (!SR) return;
     stopAudio();
+    releaseAudioForMic();   // fully unload the player so the phone can switch to "record"
     turnSeq++; // ignore any audio still loading from the previous turn
     committed = ""; segmentFinal = ""; interim = "";
     userStopped = false; fatalError = false; abortedCount = 0; lastHeard = "";
+    audioStarted = false; recActive = false;
+    clearTimeout(stopFallback);
     el.retry.hidden = true;
-    if (!rec) rec = createRecognizer();
-    // If the mic has not started within 2.5 s, something is holding it: say so.
+
+    // A brand-new recognizer for every tap (iPhone fails when one is reused).
+    const old = rec;
+    rec = createRecognizer();
+    if (old) { try { old.abort(); } catch {} }
+
+    // Mic check: not started, or (iPhone) started but not hearing anything.
     clearTimeout(startWatchdog);
     startWatchdog = setTimeout(() => {
-      if (state === "listening" && !recActive) {
+      if (state !== "listening") return;
+      if (!recActive || (isIOS && !audioStarted)) {
         micTrace("watchdog");
         userStopped = true;
-        try { rec.abort(); } catch {}
-        rec = null;
-        setState("idle", "เปิดไมค์ไม่สำเร็จ แตะปุ่มอีกครั้ง (ถ้ายังไม่ได้ ให้ตรวจสิทธิ์ไมโครโฟนของเบราว์เซอร์ แล้วรีเฟรชหน้า)", true);
+        const r = rec; rec = null;
+        try { r.abort(); } catch {}
+        setState("idle", "ไมค์ยังไม่พร้อม แตะปุ่มอีกครั้งแล้วพูดได้เลย", true);
       }
-    }, 2500);
+    }, 3000);
     try {
       rec.start();
     } catch (err) {
-      // Already running: restart cleanly
       try { rec.abort(); } catch {}
       rec = createRecognizer();
       try { rec.start(); } catch { setStatus("เปิดไมค์ไม่สำเร็จ ลองแตะอีกครั้ง", true); return; }
@@ -851,7 +874,19 @@
     clearTimeout(silenceTimer);
     clearTimeout(listenTimer);
     vibrate(40);
-    if (recActive) { try { rec.stop(); } catch { finishListening(); } }
+    if (recActive) {
+      try { rec.stop(); } catch { finishListening(); return; }
+      clearTimeout(stopFallback);
+      stopFallback = setTimeout(() => {
+        if (state !== "listening") return;
+        micTrace("stop-fallback");
+        committed = joinText(committed, segmentFinal || interim);
+        segmentFinal = ""; interim = "";
+        const r = rec; rec = null;
+        try { r.abort(); } catch {}
+        finishListening();
+      }, 1500);
+    }
     else finishListening();
   }
 
@@ -859,6 +894,7 @@
     clearTimeout(listenTimer);
     clearTimeout(silenceTimer);
     clearTimeout(startWatchdog);
+    clearTimeout(stopFallback);
     const text = joinText(committed, joinText(segmentFinal, "")).trim();
     committed = ""; segmentFinal = ""; interim = "";
     el.live.textContent = "";
@@ -1193,6 +1229,16 @@
     try { player.pause(); } catch {}
     player.onended = null; player.onerror = null;
     if (playingBubble) { setReplayIcon(playingBubble, "idle"); playingBubble = null; }
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+  }
+
+  function releaseAudioForMic() {
+    try {
+      player.onended = null; player.onerror = null;
+      player.pause();
+      player.removeAttribute("src");
+      player.load();            // element stays unlocked; it just holds no audio
+    } catch {}
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
   }
 
