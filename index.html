@@ -188,9 +188,14 @@
     }
 
     /* ===== Session ===== */
-    .session { display: grid; grid-template-rows: auto 1fr auto; min-height: 0; flex: 1; }
+    .session { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; min-height: 0; flex: 1; }
+    .session > * { min-width: 0; }
     .side { padding: 12px 16px 0; }
-    .persona { display: flex; gap: 12px; align-items: center; padding: 12px 16px; }
+    .persona-card { overflow: hidden; }
+    .persona {
+      width: 100%; display: flex; gap: 12px; align-items: center;
+      padding: 12px 14px 12px 16px; background: transparent; text-align: left;
+    }
     .avatar {
       width: 44px; height: 44px; border-radius: 50%; flex: none;
       display: grid; place-items: center;
@@ -199,12 +204,21 @@
     }
     .persona-main { min-width: 0; flex: 1; }
     .persona-name { font-weight: 700; font-size: 17px; line-height: 1.4; }
-    .persona-sub { font-size: 15px; color: var(--label-2); line-height: 1.45; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .persona-sub { display: block; font-size: 15px; color: var(--label-2); line-height: 1.45; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .persona-card.open .persona-sub { display: none; }
     .turns {
-      align-self: flex-start; white-space: nowrap;
+      white-space: nowrap;
       font-size: 13px; font-weight: 600; color: var(--accent-text);
       background: var(--tint); border-radius: 999px; padding: 2px 10px;
     }
+    .chev { flex: none; color: #B0B0B5; transition: transform .2s ease; }
+    .persona-card.open .chev { transform: rotate(90deg); }
+    .persona-details { display: none; }
+    .persona-card.open .persona-details { display: block; }
+    .pd-row { position: relative; display: flex; gap: 12px; padding: 9px 16px; font-size: 15px; line-height: 1.5; }
+    .pd-row::before { content: ""; position: absolute; top: 0; left: 16px; right: 0; border-top: var(--hair) solid var(--sep); }
+    .pd-key { flex: none; width: 64px; color: var(--label-2); }
+    .pd-val { min-width: 0; overflow-wrap: anywhere; }
     .mission-wrap { display: none; }
 
     .chat {
@@ -213,7 +227,7 @@
       display: flex; flex-direction: column; gap: 8px;
       overscroll-behavior: contain;
     }
-    .msg { max-width: 82%; padding: 9px 14px; border-radius: 20px; font-size: 17px; line-height: 1.5; word-wrap: break-word; }
+    .msg { max-width: 82%; padding: 9px 14px; border-radius: 20px; font-size: 17px; line-height: 1.5; overflow-wrap: anywhere; }
     .msg.staff { align-self: flex-end; background: var(--tint-strong); color: var(--label); border-bottom-right-radius: 6px; }
     .msg.ai { align-self: flex-start; background: var(--surface); color: var(--label); border-bottom-left-radius: 6px; display: flex; gap: 6px; align-items: flex-start; box-shadow: 0 var(--hair) 0 var(--sep); }
     .msg.ai .txt { flex: 1; }
@@ -224,6 +238,16 @@
       display: grid; place-items: center; color: var(--accent-text);
     }
     .replay:active { background: var(--tint); }
+    .replay.retry { width: auto; padding: 0 10px; margin: 0; border-radius: 999px; background: var(--tint); font-size: 13px; font-weight: 600; gap: 4px; display: inline-flex; align-items: center; height: 30px; }
+    .msg.typing { padding: 13px 16px; }
+    .dots { display: inline-flex; gap: 5px; align-items: center; height: 20px; }
+    .dots i { width: 8px; height: 8px; border-radius: 50%; background: #B9B9BE; animation: blink 1.2s infinite ease-in-out; }
+    .dots i:nth-child(2) { animation-delay: .15s; } .dots i:nth-child(3) { animation-delay: .3s; }
+    @keyframes blink { 0%, 80%, 100% { opacity: .3; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+    .eq { display: inline-flex; gap: 2px; align-items: center; height: 18px; }
+    .eq i { width: 3px; height: 6px; border-radius: 2px; background: var(--accent-text); animation: eq .9s infinite ease-in-out; }
+    .eq i:nth-child(2) { animation-delay: .2s; } .eq i:nth-child(3) { animation-delay: .4s; } .eq i:nth-child(4) { animation-delay: .1s; }
+    @keyframes eq { 0%, 100% { height: 5px; } 50% { height: 17px; } }
 
     /* Bottom toolbar: translucent with hairline */
     .controls {
@@ -235,7 +259,9 @@
       box-shadow: 0 calc(var(--hair) * -1) 0 var(--sep);
       display: flex; flex-direction: column; gap: 8px;
     }
-    .live { min-height: 24px; font-size: 16px; color: var(--label-2); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .live { min-height: 0; max-height: 4.8em; font-size: 16px; line-height: 1.6; color: var(--label-2); text-align: center; overflow-y: auto; overflow-wrap: anywhere; scrollbar-width: none; }
+    .live::-webkit-scrollbar { display: none; }
+    .live:empty { display: none; }
     .live strong { color: var(--label); font-weight: 500; }
     .status { min-height: 20px; font-size: 14px; color: var(--label-2); text-align: center; }
     .status.error { color: var(--red); }
@@ -325,11 +351,12 @@
 
     /* ===== Tablet landscape / desktop ===== */
     @media (min-width: 900px) {
-      .session { grid-template-columns: 340px 1fr; grid-template-rows: 1fr auto; }
+      .session { grid-template-columns: 340px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
       .side { grid-row: 1 / span 2; padding: 16px 0 16px 20px; overflow-y: auto; }
-      .persona { flex-direction: column; align-items: flex-start; padding: 16px; }
-      .persona-sub { -webkit-line-clamp: unset; display: block; }
-      .turns { align-self: auto; }
+      .persona { pointer-events: none; }
+      .chev { display: none; }
+      .persona-card .persona-sub { display: none; }
+      .persona-card .persona-details { display: block; }
       .mission-wrap { display: block; }
       .chat { grid-column: 2; padding: 20px 24px; }
       .controls { grid-column: 2; padding-left: 24px; padding-right: 24px; background: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
@@ -340,7 +367,7 @@
       .chat, .controls { padding-left: 24px; padding-right: 24px; }
     }
     @media (prefers-reduced-motion: reduce) {
-      .mic.listening { animation: none; }
+      .mic.listening, .dots i, .eq i { animation: none; }
       * { transition: none !important; }
     }
   </style>
@@ -398,13 +425,21 @@
   <!-- 2. Session -->
   <section class="screen session" id="sessionScreen" hidden>
     <aside class="side">
-      <div class="group persona" aria-live="polite">
-        <div class="avatar" id="pAvatar" aria-hidden="true">?</div>
-        <div class="persona-main">
-          <div class="persona-name" id="pName">ลูกค้า</div>
-          <div class="persona-sub" id="pSub"></div>
+      <div class="group persona-card open" id="personaCard">
+        <button class="persona" id="personaToggle" type="button" aria-expanded="true" aria-controls="personaDetails">
+          <span class="avatar" id="pAvatar" aria-hidden="true">?</span>
+          <span class="persona-main">
+            <span class="persona-name" id="pName" style="display:block">ลูกค้า</span>
+            <span class="persona-sub" id="pSub"></span>
+          </span>
+          <span class="turns" id="turnCount">0 รอบ</span>
+          <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
+        <div class="persona-details" id="personaDetails">
+          <div class="pd-row"><span class="pd-key">โปรไฟล์</span><span class="pd-val" id="pdProfile">-</span></div>
+          <div class="pd-row"><span class="pd-key">อยากซื้อ</span><span class="pd-val" id="pdIntent">-</span></div>
+          <div class="pd-row"><span class="pd-key">นิสัย</span><span class="pd-val" id="pdPersonality">-</span></div>
         </div>
-        <div class="turns" id="turnCount">0 รอบ</div>
       </div>
       <div class="mission-wrap">
         <div class="group-title">เป้าหมายของรอบนี้</div>
@@ -500,6 +535,8 @@
     staffId: $("staffId"), staffName: $("staffName"), remember: $("rememberMe"),
     startBtn: $("startBtn"), notice: $("browserNotice"), voiceBtn: $("voiceBtn"),
     pAvatar: $("pAvatar"), pName: $("pName"), pSub: $("pSub"), turnCount: $("turnCount"),
+    personaCard: $("personaCard"), personaToggle: $("personaToggle"),
+    pdProfile: $("pdProfile"), pdIntent: $("pdIntent"), pdPersonality: $("pdPersonality"),
     chat: $("chatBox"), live: $("liveText"), retry: $("retryBtn"),
     mic: $("micBtn"), micLabel: $("micLabel"), end: $("endBtn"), status: $("statusText"),
     score: $("scoreValue"), verdict: $("verdict"), scoreSub: $("scoreSub"),
@@ -533,7 +570,8 @@
     { id: "off", label: "🔇 ปิดเสียง" },
   ];
   let voiceMode = store.get("voiceMode", "ai");
-  let aiVoiceBlockedUntil = 0;   // after a TTS rate-limit, use device voice for a while
+  const REVEAL_WAIT_MS = 7000;   // hold the reply text until its voice is ready (max)
+  const TTS_RETRY_DELAY_MS = 1200;
 
   /* ===================== Browser support ===================== */
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -562,6 +600,7 @@
   el.again.addEventListener("click", () => startSession());
   el.home.addEventListener("click", () => show("setup"));
   el.voiceBtn.addEventListener("click", cycleVoice);
+  el.personaToggle.addEventListener("click", () => setPersonaOpen(!el.personaCard.classList.contains("open")));
   el.cancelEnd.addEventListener("click", () => closeDialog(false));
   el.confirmEnd.addEventListener("click", () => closeDialog(true));
 
@@ -593,6 +632,8 @@
 
     sessionId = (crypto.randomUUID ? crypto.randomUUID() : "SES-" + Date.now());
     lines = []; turns = 0; failedText = ""; turnSeq++;
+    releaseAudioUrls();
+    setPersonaOpen(true);
     el.chat.textContent = "";
     el.retry.hidden = true;
     el.live.textContent = "";
@@ -618,14 +659,22 @@
     if (!p) {
       el.pAvatar.textContent = "?";
       el.pName.textContent = "ลูกค้า";
-      el.pSub.textContent = "ข้อมูลลูกค้าจะปรากฏที่นี่";
+      el.pSub.textContent = "กำลังโหลดข้อมูลลูกค้า";
+      el.pdProfile.textContent = "-"; el.pdIntent.textContent = "-"; el.pdPersonality.textContent = "-";
       return;
     }
     const nameNoTitle = String(p.name || "").replace(/^(คุณ|น้อง|เฮีย|ป้า|ลุง)/, "");
     el.pAvatar.textContent = (nameNoTitle || p.name || "?").charAt(0);
     el.pName.textContent = p.name || "ลูกค้า";
-    el.pSub.textContent = [p.profile, p.buying_intent && ("อยากซื้อ: " + p.buying_intent), p.personality && ("นิสัย: " + p.personality)]
-      .filter(Boolean).join(" | ");
+    el.pSub.textContent = p.buying_intent ? "อยากซื้อ: " + p.buying_intent : (p.profile || "");
+    el.pdProfile.textContent = p.profile || "-";
+    el.pdIntent.textContent = p.buying_intent || "-";
+    el.pdPersonality.textContent = p.personality || "-";
+  }
+
+  function setPersonaOpen(open) {
+    el.personaCard.classList.toggle("open", open);
+    el.personaToggle.setAttribute("aria-expanded", String(open));
   }
 
   function updateTurns() { el.turnCount.textContent = turns + " รอบ"; }
@@ -769,20 +818,24 @@
     const done = joinText(committed, segmentFinal);
     el.live.textContent = "";
     if (!done && !interim) { el.live.textContent = "พูดได้เลย…"; return; }
+    keepChatAtBottom();
     const s = document.createElement("strong");
     s.textContent = done;
     el.live.append(s, document.createTextNode(interim ? " " + interim : ""));
+    el.live.scrollTop = el.live.scrollHeight;
   }
 
   function joinText(a, b) { return [a, b].map((x) => (x || "").trim()).filter(Boolean).join(" "); }
 
   /* ===================== Chat turn ===================== */
+  // Flow: staff bubble -> "typing" bubble -> text + voice revealed together.
   async function sendChat(text, isRetry) {
     const myTurn = ++turnSeq;
     const t0 = performance.now();
     if (!isRetry) addMessage("staff", text);
     el.retry.hidden = true;
     setState("thinking");
+    const bubble = addTyping();
 
     let data;
     try {
@@ -791,35 +844,100 @@
         history: lines.slice(-CHAT_HISTORY_LINES).join("\n"),
       }, TIMEOUT.chat, 1);
     } catch (err) {
-      if (err.type === "API_LIMIT") { failedText = text; cooldown(15); return; }
+      bubble.remove();
       failedText = text;
+      if (err.type === "API_LIMIT") { cooldown(15); return; }
       el.retry.hidden = false;
       setState("idle", "ส่งไม่สำเร็จ ตรวจสอบอินเทอร์เน็ต แล้วแตะ \"ส่งประโยคเดิมอีกครั้ง\" หรือพูดใหม่", true);
       return;
     }
+    if (myTurn !== turnSeq) { bubble.remove(); return; }
 
     failedText = "";
     const reply = data.customer_reply || "ขอโทษนะ ช่วยพูดอีกทีได้ไหม";
     lines.push("พนักงาน: " + text, "ลูกค้า: " + reply);
     turns++;
-    updateTurns();
-    const msg = addMessage("ai", reply);
     const tChat = performance.now() - t0;
-    if (myTurn !== turnSeq) return;
 
-    if (voiceMode === "off") {
-      setState("idle");
-      debug(tChat, null, "ปิดเสียง");
+    // Text only / device voice: reveal right away
+    if (voiceMode !== "ai") {
+      revealReply(bubble, reply);
+      if (voiceMode === "device") {
+        setState("speaking");
+        speakDevice(reply, myTurn);
+      } else setState("idle");
+      debug(tChat, null, voiceMode);
       return;
     }
-    setState("speaking", "กำลังเตรียมเสียง…");
-    const gender = data.gender || (persona && persona.gender) || "female";
+
+    // AI voice: keep the typing bubble until audio is ready (max REVEAL_WAIT_MS)
     const t1 = performance.now();
-    const source = await speak(reply, gender, msg, myTurn);
-    if (myTurn !== turnSeq) return;
-    if (state === "speaking") setStatus("ลูกค้ากำลังพูด");
-    debug(tChat, performance.now() - t1, source);
+    const ttsPromise = fetchTtsWithRetry(reply);
+    let revealed = false;
+    const timer = setTimeout(() => {
+      if (myTurn !== turnSeq || revealed) return;
+      revealed = true;
+      revealReply(bubble, reply, "loading");
+      setState("speaking", "กำลังโหลดเสียงลูกค้า…");
+    }, REVEAL_WAIT_MS);
+
+    let url = null;
+    try { url = await ttsPromise; } catch { url = null; }
+    clearTimeout(timer);
+    if (myTurn !== turnSeq) {
+      // The staff moved on (tapped the mic) while the voice was loading:
+      // keep the audio for replay and clear the loading icon.
+      if (bubble.isConnected && revealed) {
+        if (url) bubble._audioUrl = url;
+        setReplayIcon(bubble, url ? "idle" : "failed");
+      }
+      return;
+    }
+    if (!revealed) revealReply(bubble, reply);
+    revealed = true;
+
+    if (url) {
+      bubble._audioUrl = url;
+      setState("speaking");
+      playUrl(url, bubble, myTurn);
+      debug(tChat, performance.now() - t1, "ai");
+    } else {
+      markVoiceFailed(bubble);
+      setState("idle", "เสียงลูกค้ายังไม่พร้อม แตะ \"ฟังเสียง\" ที่ข้อความลูกค้าเพื่อลองอีกครั้ง", true);
+      debug(tChat, performance.now() - t1, "failed");
+    }
   }
+
+  function revealReply(bubble, reply, mode) {
+    bubble.classList.remove("typing");
+    bubble.textContent = "";
+    const t = document.createElement("span");
+    t.className = "txt";
+    t.textContent = reply;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "replay";
+    b.setAttribute("aria-label", "ฟังอีกครั้ง");
+    b.addEventListener("click", () => replay(bubble, reply));
+    bubble.append(t, b);
+    bubble._text = reply;
+    setReplayIcon(bubble, mode === "loading" ? "loading" : "idle");
+    updateTurns();
+    if (turns === 1 && window.innerWidth < 900) setPersonaOpen(false);
+    keepChatAtBottom();
+  }
+
+  function setReplayIcon(bubble, mode) {
+    const b = bubble.querySelector(".replay");
+    if (!b) return;
+    b.classList.toggle("retry", mode === "failed");
+    if (mode === "playing") b.innerHTML = '<span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>';
+    else if (mode === "loading") b.innerHTML = '<span class="dots" aria-hidden="true" style="transform:scale(.6)"><i></i><i></i><i></i></span>';
+    else if (mode === "failed") b.innerHTML = SPEAKER_SVG + "<span>ฟังเสียง</span>";
+    else b.innerHTML = SPEAKER_SVG;
+  }
+
+  function markVoiceFailed(bubble) { setReplayIcon(bubble, "failed"); }
 
   function cooldown(seconds) {
     let left = seconds;
@@ -839,8 +957,19 @@
   }
 
   /* ===================== Audio ===================== */
-  let audioCtx = null, currentSource = null;
+  // One <audio> element for the whole session:
+  // - plays through the speaker even when the iPhone silent switch is on
+  // - unlocked once inside a tap, then reusable without a gesture
+  // - AI voice never silently falls back to the device voice (keeps one voice per session)
+  const SPEAKER_SVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>';
+  const player = new Audio();
+  player.preload = "auto";
+  player.setAttribute("playsinline", "");
+  let audioUnlocked = false;
+  let playingBubble = null;
+  let audioUrls = [];
   let voices = [];
+  const SILENT_URL = URL.createObjectURL(makeWav(new Int16Array(1200), 24000));
 
   if ("speechSynthesis" in window) {
     const loadVoices = () => { voices = window.speechSynthesis.getVoices(); };
@@ -849,36 +978,36 @@
   }
 
   function unlockAudio() {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return;
-    if (!audioCtx) {
-      audioCtx = new AC();
-      // iOS: play one silent sample inside the tap to unlock output
-      try {
-        const b = audioCtx.createBuffer(1, 1, 22050);
-        const s = audioCtx.createBufferSource();
-        s.buffer = b; s.connect(audioCtx.destination); s.start(0);
-      } catch {}
-    }
-    if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+    if (audioUnlocked) return;
+    audioUnlocked = true;
+    try {
+      player.src = SILENT_URL;
+      const p = player.play();
+      if (p && p.then) p.then(() => { if (player.src === SILENT_URL) player.pause(); }).catch(() => { audioUnlocked = false; });
+    } catch { audioUnlocked = false; }
   }
 
-  // Returns which voice source was used: "ai" | "device" | "none"
-  async function speak(text, gender, msgEl, myTurn) {
-    const useAI = voiceMode === "ai" && Date.now() > aiVoiceBlockedUntil && audioCtx;
-    if (useAI) {
-      try {
-        const buffer = await fetchTts(text);
-        if (myTurn !== turnSeq) return "ai";
-        if (msgEl) msgEl._audio = buffer; // replay costs nothing
-        playBuffer(buffer, myTurn);
-        return "ai";
-      } catch (err) {
-        if (err.type === "API_LIMIT") aiVoiceBlockedUntil = Date.now() + 60000;
-        if (myTurn !== turnSeq) return "none";
-      }
-    }
-    return speakDevice(text, gender, myTurn) ? "device" : "none";
+  function makeWav(samples, sampleRate) {
+    const buf = new ArrayBuffer(44 + samples.length * 2);
+    const v = new DataView(buf);
+    const w = (o, str) => { for (let i = 0; i < str.length; i++) v.setUint8(o + i, str.charCodeAt(i)); };
+    w(0, "RIFF"); v.setUint32(4, 36 + samples.length * 2, true); w(8, "WAVE");
+    w(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, sampleRate, true); v.setUint32(28, sampleRate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+    w(36, "data"); v.setUint32(40, samples.length * 2, true);
+    new Int16Array(buf, 44).set(samples);
+    return new Blob([buf], { type: "audio/wav" });
+  }
+
+  function pcmBase64ToWavUrl(base64, sampleRate) {
+    const bin = atob(base64);
+    const len = bin.length - (bin.length % 2);
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+    const samples = new Int16Array(bytes.buffer); // Gemini PCM is little-endian, as are all phones
+    const url = URL.createObjectURL(makeWav(samples, sampleRate));
+    audioUrls.push(url);
+    return url;
   }
 
   async function fetchTts(text) {
@@ -886,96 +1015,108 @@
     const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
     const part = parts.find((p) => p.inlineData && p.inlineData.data);
     if (!part) throw Object.assign(new Error("No audio"), { type: "TTS_ERROR" });
-    const rateMatch = /rate=(\d+)/.exec(part.inlineData.mimeType || "");
-    return pcmToBuffer(part.inlineData.data, rateMatch ? Number(rateMatch[1]) : 24000);
+    const m = /rate=(\d+)/.exec(part.inlineData.mimeType || "");
+    return pcmBase64ToWavUrl(part.inlineData.data, m ? Number(m[1]) : 24000);
   }
 
-  function pcmToBuffer(base64, sampleRate) {
-    const bin = atob(base64);
-    const len = bin.length - (bin.length % 2);
-    const view = new DataView(new ArrayBuffer(len));
-    for (let i = 0; i < len; i++) view.setUint8(i, bin.charCodeAt(i));
-    const samples = len / 2;
-    const buffer = audioCtx.createBuffer(1, samples, sampleRate);
-    const ch = buffer.getChannelData(0);
-    for (let i = 0; i < samples; i++) ch[i] = view.getInt16(i * 2, true) / 32768;
-    return buffer;
+  async function fetchTtsWithRetry(text) {
+    try { return await fetchTts(text); }
+    catch (err) {
+      await new Promise((r) => setTimeout(r, err.type === "API_LIMIT" ? 2500 : TTS_RETRY_DELAY_MS));
+      return await fetchTts(text); // same voice, second try; never a different voice
+    }
   }
 
-  function playBuffer(buffer, myTurn) {
+  function playUrl(url, bubble, myTurn) {
     stopAudio();
-    if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
-    const src = audioCtx.createBufferSource();
-    src.buffer = buffer;
-    src.connect(audioCtx.destination);
-    src.onended = () => {
-      if (currentSource !== src) return;
-      currentSource = null;
-      if (state === "speaking" && (myTurn === undefined || myTurn === turnSeq)) setState("idle");
+    playingBubble = bubble || null;
+    if (bubble) setReplayIcon(bubble, "playing");
+    const done = () => {
+      if (playingBubble === bubble && bubble) setReplayIcon(bubble, "idle");
+      if (playingBubble === bubble) playingBubble = null;
+      if (state === "speaking" && myTurn === turnSeq) setState("idle");
     };
-    currentSource = src;
-    src.start(0);
+    player.onended = done;
+    player.onerror = done;
+    player.src = url;
+    const p = player.play();
+    if (p && p.catch) p.catch(() => {
+      // Autoplay blocked (rare): let the user start it with one tap
+      if (bubble) markVoiceFailed(bubble);
+      if (state === "speaking" && myTurn === turnSeq) setState("idle", "แตะ \"ฟังเสียง\" ที่ข้อความลูกค้าเพื่อเปิดเสียง");
+    });
   }
 
-  function speakDevice(text, gender, myTurn) {
-    if (!("speechSynthesis" in window)) { if (state === "speaking") setState("idle"); return false; }
+  function speakDevice(text, myTurn) {
+    const gender = (persona && persona.gender) || "female";
+    const finish = () => { if (state === "speaking" && myTurn === turnSeq) setState("idle"); };
+    if (!("speechSynthesis" in window)) { finish(); return false; }
     const synth = window.speechSynthesis;
     synth.cancel();
     const u = new SpeechSynthesisUtterance(text.replace(/["'“”‘’]/g, "").trim());
-    u.lang = "th-TH";
-    u.rate = 1;   // neutral
-    u.pitch = 1;  // neutral
+    u.lang = "th-TH"; u.rate = 1; u.pitch = 1;
     const th = (voices.length ? voices : synth.getVoices()).filter((v) => /^th/i.test(v.lang));
-    if (th.length) {
-      const hint = gender === "male" ? /male|niwat|ชาย/i : /female|kanya|premwadee|achara|หญิง/i;
-      u.voice = th.find((v) => hint.test(v.name) && !(gender === "male" && /female/i.test(v.name))) || th[0];
-    }
-    const done = () => { if (state === "speaking" && (myTurn === undefined || myTurn === turnSeq)) setState("idle"); };
-    u.onend = done;
-    u.onerror = done;
+    const male = th.find((v) => /male|niwat|ชาย/i.test(v.name) && !/female/i.test(v.name));
+    const female = th.find((v) => /female|kanya|premwadee|achara|หญิง/i.test(v.name));
+    u.voice = (gender === "male" ? male : female) || th[0] || null;
+    if (gender === "male" && !male) setStatus("เครื่องนี้ไม่มีเสียงผู้ชายภาษาไทย แนะนำใช้โหมด \"เสียง AI\"");
+    u.onend = finish; u.onerror = finish;
     synth.speak(u);
     return true;
   }
 
   function stopAudio() {
-    if (currentSource) {
-      const s = currentSource;
-      currentSource = null;
-      try { s.stop(); } catch {}
-    }
+    try { player.pause(); } catch {}
+    player.onended = null; player.onerror = null;
+    if (playingBubble) { setReplayIcon(playingBubble, "idle"); playingBubble = null; }
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
   }
 
-  function replay(msgEl, text) {
-    if (state === "listening" || state === "thinking" || state === "busy") return;
+  function releaseAudioUrls() {
+    stopAudio();
+    audioUrls.forEach((u) => URL.revokeObjectURL(u));
+    audioUrls = [];
+  }
+
+  async function replay(bubble, text) {
+    if (state === "listening" || state === "thinking" || state === "busy" || state === "cooldown") return;
     unlockAudio();
-    turnSeq++;
-    const myTurn = turnSeq;
+    const myTurn = ++turnSeq;
+    if (voiceMode === "device") { setState("speaking"); speakDevice(text, myTurn); return; }
+    if (voiceMode === "off") return;
+    if (!bubble._audioUrl) {
+      setReplayIcon(bubble, "loading");
+      setState("speaking", "กำลังโหลดเสียงลูกค้า…");
+      try { bubble._audioUrl = await fetchTtsWithRetry(text); }
+      catch {
+        if (myTurn !== turnSeq) return;
+        markVoiceFailed(bubble);
+        setState("idle", "ยังโหลดเสียงไม่ได้ ลองใหม่อีกครั้งในไม่กี่วินาที", true);
+        return;
+      }
+      if (myTurn !== turnSeq) return;
+    }
     setState("speaking");
-    if (msgEl._audio && audioCtx) playBuffer(msgEl._audio, myTurn);
-    else speakDevice(text, (persona && persona.gender) || "female", myTurn);
+    playUrl(bubble._audioUrl, bubble, myTurn);
   }
 
   /* ===================== Messages ===================== */
   function addMessage(who, text) {
     const div = document.createElement("div");
     div.className = "msg " + who;
-    if (who === "ai") {
-      const t = document.createElement("span");
-      t.className = "txt";
-      t.textContent = text;
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "replay";
-      b.setAttribute("aria-label", "ฟังอีกครั้ง");
-      b.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>';
-      b.addEventListener("click", () => replay(div, text));
-      div.append(t, b);
-    } else {
-      div.textContent = text;
-    }
+    div.textContent = text;
     el.chat.appendChild(div);
-    el.chat.scrollTop = el.chat.scrollHeight;
+    keepChatAtBottom();
+    return div;
+  }
+
+  function addTyping() {
+    const div = document.createElement("div");
+    div.className = "msg ai typing";
+    div.setAttribute("aria-label", "ลูกค้ากำลังพิมพ์");
+    div.innerHTML = '<span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>';
+    el.chat.appendChild(div);
+    keepChatAtBottom();
     return div;
   }
 
@@ -984,6 +1125,10 @@
     div.className = "msg system";
     div.textContent = text;
     el.chat.appendChild(div);
+  }
+
+  function keepChatAtBottom() {
+    requestAnimationFrame(() => { el.chat.scrollTop = el.chat.scrollHeight; });
   }
 
   /* ===================== Evaluate ===================== */
