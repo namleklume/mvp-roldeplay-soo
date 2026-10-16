@@ -1,552 +1,1141 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Roleplay: ระบบสอบมาตรฐานบริการ</title>
-    <style>
-        /* 🌟 Reset & Minimal Typography */
-        * { box-sizing: border-box; }
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-            background-color: #fafafa; 
-            color: #222;
-            margin: 0; 
-            padding: 20px; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            min-height: 100vh;
-        }
-        
-        /* 🌟 Container Style */
-        .container { 
-            max-width: 500px; 
-            width: 100%; 
-            background: #ffffff; 
-            padding: 24px; 
-            border-radius: 16px; 
-            border: 1px solid #eaeaea;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.04); 
-        }
-        
-        h2 { 
-            text-align: center; 
-            font-weight: 600; 
-            font-size: 20px;
-            color: #111; 
-            margin: 0 0 20px 0; 
-            letter-spacing: -0.5px;
-        }
-        
-        /* 🌟 Inputs */
-        .form-group { display: flex; gap: 12px; margin-bottom: 20px; }
-        input { 
-            padding: 14px; 
-            border: 1px solid #e1e1e1; 
-            background-color: #fcfcfc;
-            border-radius: 10px; 
-            font-size: 14px; 
-            width: 100%; 
-            transition: all 0.2s ease;
-            outline: none;
-        }
-        input:focus { border-color: #222; background-color: #fff; }
-        
-        /* 🌟 Clean Instructions Box */
-        .instructions {
-            background-color: #f7f7f8;
-            color: #555;
-            padding: 16px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            font-size: 13px;
-            line-height: 1.6;
-            border: 1px solid #eee;
-        }
-        .instructions strong { color: #111; display: block; margin-bottom: 8px; }
-        .instructions ol { margin: 0; padding-left: 20px; }
-        .instructions li { margin-bottom: 4px; }
-        
-        /* 🌟 Minimal Chat Box */
-        .chat-box { 
-            height: 380px; 
-            border: 1px solid #eaeaea; 
-            border-radius: 12px; 
-            padding: 16px; 
-            overflow-y: auto; 
-            background-color: #fff; 
-            margin-bottom: 20px; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 12px; 
-        }
-        .msg { 
-            padding: 12px 16px; 
-            max-width: 85%; 
-            line-height: 1.5; 
-            font-size: 14px; 
-        }
-        .msg.staff { 
-            background-color: #222; 
-            color: #fff; 
-            align-self: flex-end; 
-            border-radius: 16px 16px 4px 16px; 
-        }
-        .msg.ai { 
-            background-color: #f4f4f5; 
-            color: #222; 
-            align-self: flex-start; 
-            border-radius: 16px 16px 16px 4px; 
-        }
-        
-        /* 🌟 Sleek Buttons */
-        .controls { display: flex; flex-direction: column; gap: 12px; }
-        button { 
-            border: none; 
-            padding: 16px; 
-            border-radius: 12px; 
-            font-size: 15px; 
-            font-weight: 600; 
-            cursor: pointer; 
-            transition: all 0.2s ease; 
-            width: 100%; 
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            user-select: none; 
-            -webkit-user-select: none; 
-            -webkit-touch-callout: none; 
-            touch-action: manipulation; 
-        }
-        
-        #micBtn { 
-            background-color: #222; 
-            color: #fff; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        }
-        #micBtn:active { transform: scale(0.98); }
-        
-        #micBtn.recording { 
-            background-color: #ef4444; 
-            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
-            animation: pulse-red 1.5s infinite; 
-        }
-        
-        #endBtn { 
-            background-color: transparent; 
-            color: #555; 
-            border: 1px solid #ddd;
-        }
-        #endBtn:active { background-color: #f9f9f9; transform: scale(0.98); }
-        
-        .status { 
-            text-align: center; 
-            font-size: 12px; 
-            color: #888; 
-            margin-top: 4px; 
-            min-height: 18px;
-        }
-        
-        #feedbackBox { 
-            display: none; 
-            margin-top: 20px; 
-            padding: 16px; 
-            border-radius: 12px; 
-            line-height: 1.6; 
-            font-size: 14px; 
-            border: 1px solid transparent;
-        }
-        
-        @keyframes pulse-red { 
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); } 
-            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } 
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light only">
+  <meta name="theme-color" content="#FFF8F1">
+  <title>ฝึกขายกับลูกค้า AI | สอบมาตรฐานบริการ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ===== Theme: white + light orange, Apple-style components ===== */
+    :root {
+      --bg: #FFF8F1;              /* page: very light orange */
+      --surface: #FFFFFF;         /* grouped cells, cards */
+      --tint: #FFEBD9;            /* light orange fill */
+      --tint-strong: #FFE0C2;
+      --accent: #E8710A;          /* filled buttons (bold 19px text) */
+      --accent-text: #B4500A;     /* orange text on white / tint */
+      --label: #1C1C1E;
+      --label-2: #6C6C70;
+      --fill: rgba(118, 118, 128, 0.12);
+      --sep: rgba(60, 60, 67, 0.29);
+      --hair: 1px;
+      --red: #D7261E;
+      --red-tint: #FDECEA;
+      --green: #1E7B3C;
+      --green-tint: #E7F6EC;
+      --bar: rgba(255, 248, 241, 0.86);
+      --r-cell: 12px;             /* inset grouped list */
+      --r-btn: 14px;
+      --font: "Sarabun", "Thonburi", "Leelawadee UI", "Noto Sans Thai", sans-serif;
+      color-scheme: light;
+    }
+    @media (min-resolution: 2dppx) { :root { --hair: 0.5px; } }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: var(--font);
+      font-size: 17px;
+      line-height: 1.6;
+      background: var(--bg);
+      color: var(--label);
+      -webkit-text-size-adjust: 100%;
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input { font: inherit; color: inherit; }
+    button { cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; border: none; }
+    :focus-visible { outline: 3px solid rgba(232, 113, 10, 0.55); outline-offset: 2px; }
+    [hidden] { display: none !important; }
+
+    .app {
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
+    }
+
+    /* Navigation bar: translucent with hairline, like iOS */
+    .topbar {
+      position: relative;
+      z-index: 2;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+      background: var(--bar);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      backdrop-filter: saturate(180%) blur(20px);
+      box-shadow: 0 var(--hair) 0 var(--sep);
+    }
+    .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .brand-mark {
+      width: 30px; height: 30px; border-radius: 8px; flex: none;
+      background: linear-gradient(145deg, #FFB45C, var(--accent));
+    }
+    .brand-text { font-weight: 700; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .chip-btn {
+      background: var(--tint);
+      color: var(--accent-text);
+      border-radius: 999px;
+      padding: 6px 14px;
+      min-height: 36px;
+      font-size: 15px; font-weight: 600;
+      white-space: nowrap;
+    }
+    .chip-btn:active { background: var(--tint-strong); }
+
+    .screen { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    .wrap { width: 100%; max-width: 600px; margin: 0 auto; }
+
+    /* ===== Inset grouped list (iOS Settings style) ===== */
+    .group-title { font-size: 14px; color: var(--label-2); margin: 22px 16px 7px; }
+    .group-footer { font-size: 14px; color: var(--label-2); margin: 7px 16px 0; line-height: 1.5; }
+    .group {
+      background: var(--surface);
+      border-radius: var(--r-cell);
+      overflow: hidden;
+    }
+    .cell {
+      position: relative;
+      display: flex; align-items: center; gap: 12px;
+      min-height: 50px;
+      padding: 10px 16px;
+    }
+    .group > .cell + .cell::before,
+    .group > li + li::before {
+      content: "";
+      position: absolute; top: 0; right: 0;
+      left: var(--sep-inset, 16px);
+      border-top: var(--hair) solid var(--sep);
+    }
+    .cell-label { flex: none; width: 118px; font-weight: 500; }
+    .cell input[type="text"], .cell input:not([type]) {
+      flex: 1; min-width: 0;
+      border: none; outline: none; background: transparent;
+      font-size: 17px; /* >=16px: no iOS zoom */
+      padding: 4px 0;
+    }
+    .cell input::placeholder { color: #A1A1A6; }
+
+    /* iOS switch */
+    .switch {
+      -webkit-appearance: none; appearance: none;
+      margin-left: auto; flex: none;
+      width: 51px; height: 31px; border-radius: 999px;
+      background: rgba(120, 120, 128, 0.16);
+      position: relative; cursor: pointer;
+      transition: background-color .2s ease;
+    }
+    .switch::after {
+      content: ""; position: absolute; top: 2px; left: 2px;
+      width: 27px; height: 27px; border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 3px 8px rgba(0,0,0,.15), 0 1px 1px rgba(0,0,0,.16);
+      transition: transform .2s ease;
+    }
+    .switch:checked { background: var(--accent); }
+    .switch:checked::after { transform: translateX(20px); }
+
+    /* Numbered steps (a real sequence) */
+    .steps { list-style: none; margin: 0; padding: 0; --sep-inset: 56px; }
+    .steps li { position: relative; display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 9px 16px; counter-increment: s; }
+    .steps { counter-reset: s; }
+    .steps li::after {
+      content: counter(s);
+      order: -1; flex: none;
+      width: 28px; height: 28px; border-radius: 50%;
+      display: grid; place-items: center;
+      background: var(--tint); color: var(--accent-text);
+      font-weight: 700; font-size: 15px;
+    }
+
+    /* Buttons */
+    .btn-primary {
+      width: 100%; min-height: 52px;
+      border-radius: var(--r-btn);
+      background: var(--accent); color: #fff;
+      font-size: 19px; font-weight: 700;
+    }
+    .btn-primary:active { filter: brightness(0.92); }
+    .btn-secondary {
+      width: 100%; min-height: 52px;
+      border-radius: var(--r-btn);
+      background: var(--fill); color: var(--accent-text);
+      font-size: 17px; font-weight: 600;
+    }
+    .btn-secondary:active { background: rgba(118,118,128,.2); }
+
+    .notice {
+      border-radius: var(--r-cell);
+      padding: 12px 16px;
+      margin-top: 16px;
+      background: var(--red-tint); color: var(--red);
+      font-size: 15px;
+    }
+
+    /* ===== Setup ===== */
+    .setup { overflow-y: auto; padding: 0 16px calc(24px + env(safe-area-inset-bottom)); }
+    .setup h1 { font-size: 30px; line-height: 1.3; margin: 20px 0 6px; font-weight: 700; }
+    .lead { color: var(--label-2); margin: 0; }
+    .start-bar {
+      position: sticky;
+      bottom: calc(-24px - env(safe-area-inset-bottom));
+      margin: 20px 0 calc(-24px - env(safe-area-inset-bottom));
+      padding: 14px 0 calc(16px + env(safe-area-inset-bottom));
+      background: linear-gradient(to bottom, rgba(255,248,241,0), var(--bg) 30%);
+    }
+
+    /* ===== Session ===== */
+    .session { display: grid; grid-template-rows: auto 1fr auto; min-height: 0; flex: 1; }
+    .side { padding: 12px 16px 0; }
+    .persona { display: flex; gap: 12px; align-items: center; padding: 12px 16px; }
+    .avatar {
+      width: 44px; height: 44px; border-radius: 50%; flex: none;
+      display: grid; place-items: center;
+      background: var(--tint); color: var(--accent-text);
+      font-weight: 700; font-size: 19px;
+    }
+    .persona-main { min-width: 0; flex: 1; }
+    .persona-name { font-weight: 700; font-size: 17px; line-height: 1.4; }
+    .persona-sub { font-size: 15px; color: var(--label-2); line-height: 1.45; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .turns {
+      align-self: flex-start; white-space: nowrap;
+      font-size: 13px; font-weight: 600; color: var(--accent-text);
+      background: var(--tint); border-radius: 999px; padding: 2px 10px;
+    }
+    .mission-wrap { display: none; }
+
+    .chat {
+      overflow-y: auto;
+      padding: 16px;
+      display: flex; flex-direction: column; gap: 8px;
+      overscroll-behavior: contain;
+    }
+    .msg { max-width: 82%; padding: 9px 14px; border-radius: 20px; font-size: 17px; line-height: 1.5; word-wrap: break-word; }
+    .msg.staff { align-self: flex-end; background: var(--tint-strong); color: var(--label); border-bottom-right-radius: 6px; }
+    .msg.ai { align-self: flex-start; background: var(--surface); color: var(--label); border-bottom-left-radius: 6px; display: flex; gap: 6px; align-items: flex-start; box-shadow: 0 var(--hair) 0 var(--sep); }
+    .msg.ai .txt { flex: 1; }
+    .msg.system { align-self: center; max-width: 92%; text-align: center; color: var(--label-2); font-size: 14px; background: transparent; padding: 2px 8px; }
+    .replay {
+      flex: none; background: transparent;
+      width: 34px; height: 34px; margin: -4px -8px -4px 0; border-radius: 50%;
+      display: grid; place-items: center; color: var(--accent-text);
+    }
+    .replay:active { background: var(--tint); }
+
+    /* Bottom toolbar: translucent with hairline */
+    .controls {
+      position: relative;
+      padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+      background: var(--bar);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      backdrop-filter: saturate(180%) blur(20px);
+      box-shadow: 0 calc(var(--hair) * -1) 0 var(--sep);
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .live { min-height: 24px; font-size: 16px; color: var(--label-2); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .live strong { color: var(--label); font-weight: 500; }
+    .status { min-height: 20px; font-size: 14px; color: var(--label-2); text-align: center; }
+    .status.error { color: var(--red); }
+    .row { display: flex; gap: 10px; }
+
+    .mic {
+      flex: 1; min-height: 60px;
+      border-radius: 18px;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      font-size: 19px; font-weight: 700;
+      background: var(--accent); color: #fff;
+      user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+      transition: background-color .2s ease, transform .1s ease;
+    }
+    .mic:active { transform: scale(0.985); }
+    .mic svg { width: 24px; height: 24px; flex: none; }
+    .mic.listening { background: var(--red); animation: pulse 1.4s infinite; }
+    .mic.speaking { background: var(--tint); color: var(--accent-text); }
+    .mic:disabled { background: var(--fill); color: var(--label-2); cursor: default; animation: none; }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(215,38,30,.4); }
+      70% { box-shadow: 0 0 0 12px rgba(215,38,30,0); }
+      100% { box-shadow: 0 0 0 0 rgba(215,38,30,0); }
+    }
+    .end-btn {
+      flex: none; min-height: 60px; min-width: 92px; padding: 0 14px;
+      border-radius: 18px;
+      background: var(--fill); color: var(--accent-text);
+      font-size: 15px; font-weight: 700; line-height: 1.3;
+    }
+    .end-btn:disabled { color: var(--label-2); opacity: .6; }
+    .retry-btn {
+      align-self: center;
+      background: var(--red-tint); color: var(--red);
+      border-radius: 999px; padding: 6px 16px; min-height: 40px;
+      font-size: 15px; font-weight: 600;
+    }
+
+    /* ===== Result ===== */
+    .result { overflow-y: auto; padding: 0 16px calc(24px + env(safe-area-inset-bottom)); }
+    .score-card { text-align: center; padding: 26px 16px 22px; margin-top: 20px; }
+    .score { font-size: 64px; font-weight: 700; line-height: 1.1; }
+    .verdict { display: inline-block; margin-top: 10px; padding: 3px 14px; border-radius: 999px; font-weight: 700; font-size: 16px; }
+    .verdict.pass { background: var(--green-tint); color: var(--green); }
+    .verdict.fail { background: var(--red-tint); color: var(--red); }
+    .score-sub { color: var(--label-2); font-size: 14px; margin-top: 10px; }
+    .result-steps { list-style: none; margin: 0; padding: 0; --sep-inset: 58px; }
+    .result-steps li { position: relative; display: flex; gap: 12px; padding: 12px 16px; }
+    .mark { width: 30px; height: 30px; border-radius: 50%; flex: none; display: grid; place-items: center; font-weight: 700; margin-top: 1px; }
+    .mark.ok { background: var(--green-tint); color: var(--green); }
+    .mark.no { background: var(--red-tint); color: var(--red); }
+    .step-name { font-weight: 600; }
+    .step-reason { color: var(--label-2); font-size: 15px; }
+    .step-tip { margin-top: 6px; font-size: 15px; background: var(--tint); border-radius: 10px; padding: 7px 10px; }
+    .summary { margin: 0; padding: 12px 16px; }
+    .kw { font-size: 14px; color: var(--label-2); margin: 0; padding: 0 16px 12px 34px; }
+    .kw:empty { display: none; }
+    details summary { cursor: pointer; font-weight: 500; min-height: 50px; display: flex; align-items: center; padding: 0 16px; color: var(--accent-text); list-style: none; }
+    details summary::-webkit-details-marker { display: none; }
+    details summary::after { content: "›"; margin-left: auto; color: #C4C4C7; font-size: 22px; transition: transform .2s; }
+    details[open] summary::after { transform: rotate(90deg); }
+    .transcript { white-space: pre-wrap; font-size: 15px; color: var(--label-2); margin: 0; padding: 0 16px 14px; }
+    .stack { display: flex; flex-direction: column; gap: 10px; margin-top: 24px; }
+
+    /* ===== iOS-style alert ===== */
+    dialog.alert {
+      border: none; padding: 0;
+      width: 290px; max-width: 86vw;
+      border-radius: 14px; overflow: hidden;
+      background: rgba(255, 255, 255, 0.94);
+      -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+      color: var(--label);
+      text-align: center;
+    }
+    dialog.alert::backdrop { background: rgba(0, 0, 0, 0.2); }
+    .alert-body { padding: 19px 16px 17px; }
+    .alert-body h2 { margin: 0 0 4px; font-size: 18px; font-weight: 700; line-height: 1.35; }
+    .alert-body p { margin: 0; font-size: 14px; color: var(--label); line-height: 1.45; }
+    .alert-actions { display: flex; box-shadow: inset 0 var(--hair) 0 var(--sep); }
+    .alert-actions button {
+      flex: 1; min-height: 46px; background: transparent;
+      color: var(--accent-text); font-size: 17px;
+    }
+    .alert-actions button + button { box-shadow: inset var(--hair) 0 0 var(--sep); }
+    .alert-actions .strong { font-weight: 700; }
+    .alert-actions button:active { background: rgba(0,0,0,.05); }
+
+    /* ===== Tablet landscape / desktop ===== */
+    @media (min-width: 900px) {
+      .session { grid-template-columns: 340px 1fr; grid-template-rows: 1fr auto; }
+      .side { grid-row: 1 / span 2; padding: 16px 0 16px 20px; overflow-y: auto; }
+      .persona { flex-direction: column; align-items: flex-start; padding: 16px; }
+      .persona-sub { -webkit-line-clamp: unset; display: block; }
+      .turns { align-self: auto; }
+      .mission-wrap { display: block; }
+      .chat { grid-column: 2; padding: 20px 24px; }
+      .controls { grid-column: 2; padding-left: 24px; padding-right: 24px; background: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+      .msg { max-width: 72%; }
+    }
+    @media (min-width: 600px) and (max-width: 899px) {
+      .side { padding: 16px 24px 0; }
+      .chat, .controls { padding-left: 24px; padding-right: 24px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .mic.listening { animation: none; }
+      * { transition: none !important; }
+    }
+  </style>
 </head>
 <body>
-
-<div class="container">
-    <h2>AI Roleplay Session</h2>
-    
-    <div class="form-group">
-        <input type="text" id="staffId" placeholder="รหัสพนักงาน" required>
-        <input type="text" id="staffName" placeholder="ชื่อ-นามสกุล" required>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"></div>
+      <div class="brand-text">ฝึกขายกับลูกค้า AI</div>
     </div>
+    <button class="chip-btn" id="voiceBtn" type="button" aria-label="เปลี่ยนโหมดเสียง">🔊 เสียง AI</button>
+  </header>
 
-    <div class="instructions">
-        <strong>💡 วิธีการใช้งาน:</strong>
-        <ol>
-            <li>กรอกรหัสพนักงานและชื่อให้ครบถ้วน</li>
-            <li><strong>แตะปุ่มไมค์ 1 ครั้ง</strong> เพื่อเริ่มพูด (ปุ่มจะกะพริบสีแดง)</li>
-            <li><strong>แตะปุ่มเดิมอีก 1 ครั้ง</strong> เมื่อพูดจบ เพื่อส่งข้อความ</li>
-            <li>เริ่มต้นด้วยการทักทาย เช่น <i>"ออโรร่า สวัสดีค่ะ/ครับ..."</i></li>
+  <!-- 1. Setup -->
+  <section class="screen setup" id="setupScreen">
+    <div class="wrap">
+      <h1>สอบมาตรฐาน<wbr>บริการ<wbr>หน้าร้าน</h1>
+      <p class="lead">คุยกับลูกค้าจำลองด้วยเสียง เหมือนลูกค้าเดินเข้าร้านจริง แล้วรับผลประเมินตามขั้นตอนการขาย</p>
+
+      <div class="notice" id="browserNotice" hidden></div>
+
+      <div class="group-title">ข้อมูลพนักงาน</div>
+      <div class="group">
+        <label class="cell">
+          <span class="cell-label">รหัสพนักงาน</span>
+          <input id="staffId" autocomplete="off" inputmode="text" enterkeyhint="next" placeholder="เช่น 10234">
+        </label>
+        <label class="cell">
+          <span class="cell-label">ชื่อ-นามสกุล</span>
+          <input id="staffName" autocomplete="name" enterkeyhint="done" placeholder="ชื่อ นามสกุล">
+        </label>
+        <label class="cell">
+          <span>จำข้อมูลไว้ในเครื่องนี้</span>
+          <input type="checkbox" role="switch" class="switch" id="rememberMe" checked>
+        </label>
+      </div>
+
+      <div class="group-title">ขั้นตอนที่กรรมการจะประเมิน</div>
+      <ol class="group steps">
+        <li>เปิดการขาย ทักทายด้วย "ออโรร่า สวัสดีค่ะ/ครับ"</li>
+        <li>แนะนำสินค้าให้ตรงความต้องการ</li>
+        <li>ย้ำโปรโมชันหรือสิทธิประโยชน์</li>
+        <li>ตอบข้อโต้แย้งของลูกค้า</li>
+        <li>ปิดการขาย</li>
+      </ol>
+      <p class="group-footer">แตะปุ่มไมค์ 1 ครั้งเพื่อเริ่มพูด พูดจบแล้วแตะอีกครั้งเพื่อส่ง ผ่านเกณฑ์เมื่อได้ 4 จาก 5 ขั้นตอน</p>
+
+      <div class="start-bar">
+        <button class="btn-primary" id="startBtn" type="button">เริ่มสอบ</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Session -->
+  <section class="screen session" id="sessionScreen" hidden>
+    <aside class="side">
+      <div class="group persona" aria-live="polite">
+        <div class="avatar" id="pAvatar" aria-hidden="true">?</div>
+        <div class="persona-main">
+          <div class="persona-name" id="pName">ลูกค้า</div>
+          <div class="persona-sub" id="pSub"></div>
+        </div>
+        <div class="turns" id="turnCount">0 รอบ</div>
+      </div>
+      <div class="mission-wrap">
+        <div class="group-title">เป้าหมายของรอบนี้</div>
+        <ol class="group steps">
+          <li>เปิดการขาย</li>
+          <li>แนะนำสินค้า</li>
+          <li>ย้ำโปรโมชัน</li>
+          <li>ตอบข้อโต้แย้ง</li>
+          <li>ปิดการขาย</li>
         </ol>
-    </div>
+      </div>
+    </aside>
 
-    <div class="chat-box" id="chatBox">
-        <div class="msg ai">ลูกค้าเดินเข้ามาในร้านแล้วครับ พร้อมแล้วแตะที่ปุ่มไมค์เพื่อกล่าวทักทายได้เลย!</div>
-    </div>
+    <div class="chat" id="chatBox" role="log" aria-live="polite"></div>
 
     <div class="controls">
-        <button id="micBtn">🎤 แตะเพื่อพูด (แตะอีกครั้งเพื่อส่ง)</button>
-        <button id="endBtn" onclick="endConversation()">🛑 จบการสนทนาและดูผลสอบ</button>
-        <div class="status" id="statusText">พร้อมใช้งาน</div>
+      <div class="live" id="liveText"></div>
+      <button class="retry-btn" id="retryBtn" type="button" hidden>ส่งประโยคเดิมอีกครั้ง</button>
+      <div class="row">
+        <button class="mic" id="micBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/></svg>
+          <span id="micLabel">แตะเพื่อพูด</span>
+        </button>
+        <button class="end-btn" id="endBtn" type="button">จบและ<br>ดูผล</button>
+      </div>
+      <div class="status" id="statusText" role="status"></div>
     </div>
-    
-    <div id="feedbackBox"></div>
+  </section>
+
+  <!-- 3. Result -->
+  <section class="screen result" id="resultScreen" hidden>
+    <div class="wrap">
+      <div class="group score-card">
+        <div class="score" id="scoreValue">0%</div>
+        <div class="verdict" id="verdict"></div>
+        <div class="score-sub" id="scoreSub"></div>
+      </div>
+
+      <div class="group-title">ผลรายขั้นตอน</div>
+      <ul class="group result-steps" id="resultSteps"></ul>
+
+      <div class="group-title">สรุปจากกรรมการ</div>
+      <div class="group">
+        <p class="summary" id="summaryText"></p>
+        <ul class="kw" id="keywordList"></ul>
+      </div>
+
+      <div class="group-title">บทสนทนา</div>
+      <div class="group">
+        <details>
+          <summary>ดูบทสนทนาทั้งหมด</summary>
+          <p class="transcript" id="transcriptText"></p>
+        </details>
+      </div>
+
+      <div class="stack">
+        <button class="btn-primary" id="againBtn" type="button">สอบใหม่กับลูกค้าคนใหม่</button>
+        <button class="btn-secondary" id="homeBtn" type="button">กลับหน้าแรก</button>
+      </div>
+    </div>
+  </section>
 </div>
 
+<dialog id="confirmDialog" class="alert">
+  <div class="alert-body">
+    <h2>จบการสนทนา?</h2>
+    <p>ระบบจะส่งบทสนทนาให้กรรมการประเมินผล และไม่สามารถคุยต่อในรอบนี้ได้</p>
+  </div>
+  <div class="alert-actions">
+    <button id="cancelEnd" type="button">คุยต่อ</button>
+    <button id="confirmEnd" class="strong" type="button">ส่งประเมิน</button>
+  </div>
+</dialog>
+
 <script>
-    const availablePersonas = ["P01", "P02", "P03", "P04", "P05", "P06", "P07", "P08", "P09", "P10"]; 
-    const activePersona = availablePersonas[Math.floor(Math.random() * availablePersonas.length)];
+(() => {
+  "use strict";
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'th-TH'; 
-    recognition.interimResults = false;
+  /* ===================== Config ===================== */
+  // ⚠️ URL ของ Cloudflare Worker
+  const WEBHOOK_URL = "https://aurora-roleplay-backend.pongporn-lek.workers.dev/";
+  const PERSONAS = ["P01", "P02", "P03", "P04", "P05", "P06", "P07", "P08", "P09", "P10"];
+  const MIN_TURNS = 2;
+  const MAX_LISTEN_MS = 60000;
+  const TIMEOUT = { start: 8000, chat: 12000, tts: 20000, evaluate: 30000 };
+  const CHAT_HISTORY_LINES = 8;
+  const DEBUG = new URLSearchParams(location.search).has("debug");
 
-    let isRecording = false;
-    let isProcessing = false;
-    let chatHistory = "";
-    let activeSessionModel = null; 
-    let currentSessionId = "SES-" + Date.now(); 
-    
-    // ⚠️ นำ URL จาก Cloudflare Worker มาวางที่นี่
-    const WEBHOOK_URL = "https://aurora-roleplay-backend.pongporn-lek.workers.dev/";
+  /* ===================== Elements ===================== */
+  const $ = (id) => document.getElementById(id);
+  const el = {
+    setup: $("setupScreen"), session: $("sessionScreen"), result: $("resultScreen"),
+    staffId: $("staffId"), staffName: $("staffName"), remember: $("rememberMe"),
+    startBtn: $("startBtn"), notice: $("browserNotice"), voiceBtn: $("voiceBtn"),
+    pAvatar: $("pAvatar"), pName: $("pName"), pSub: $("pSub"), turnCount: $("turnCount"),
+    chat: $("chatBox"), live: $("liveText"), retry: $("retryBtn"),
+    mic: $("micBtn"), micLabel: $("micLabel"), end: $("endBtn"), status: $("statusText"),
+    score: $("scoreValue"), verdict: $("verdict"), scoreSub: $("scoreSub"),
+    resultSteps: $("resultSteps"), summary: $("summaryText"), keywords: $("keywordList"),
+    transcript: $("transcriptText"), again: $("againBtn"), home: $("homeBtn"),
+    dialog: $("confirmDialog"), cancelEnd: $("cancelEnd"), confirmEnd: $("confirmEnd"),
+  };
 
-    const micBtn = document.getElementById('micBtn');
-    const endBtn = document.getElementById('endBtn');
-    const statusText = document.getElementById('statusText');
-    const chatBox = document.getElementById('chatBox');
-    const feedbackBox = document.getElementById('feedbackBox');
-    const staffIdInput = document.getElementById('staffId');
-    const staffNameInput = document.getElementById('staffName');
+  /* ===================== Storage (safe) ===================== */
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch { return d; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+    del(k) { try { localStorage.removeItem(k); } catch {} },
+  };
 
-    // 🌟 ระบบ Pre-warming: ปลุกเซิร์ฟเวอร์
-    let isServerAwake = false;
+  /* ===================== State ===================== */
+  let state = "idle";            // idle | listening | thinking | speaking | busy | cooldown
+  let persona = null;            // public card
+  let personaId = null;
+  let lastPersonaId = null;
+  let sessionId = "";
+  let lines = [];                // ["พนักงาน: ...", "ลูกค้า: ..."]
+  let turns = 0;
+  let turnSeq = 0;               // guards late audio from older turns
+  let failedText = "";
+  let wakeLock = null;
 
-    function pingServer() {
-        if (isServerAwake) return; 
-        
-        fetch(WEBHOOK_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "wakeup" })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === "ready") {
-                isServerAwake = true;
-                console.log("✅ Worker is ready!");
-            }
-        })
-        .catch(err => console.log("⏳ รอปลุกเซิร์ฟเวอร์รอบถัดไป..."));
+  const VOICE_MODES = [
+    { id: "ai", label: "🔊 เสียง AI" },
+    { id: "device", label: "🗣️ เสียงเครื่อง" },
+    { id: "off", label: "🔇 ปิดเสียง" },
+  ];
+  let voiceMode = store.get("voiceMode", "ai");
+  let aiVoiceBlockedUntil = 0;   // after a TTS rate-limit, use device voice for a while
+
+  /* ===================== Browser support ===================== */
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const isAndroid = /Android/i.test(navigator.userAgent);
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+  if (!SR) {
+    el.notice.hidden = false;
+    el.notice.textContent = isIOS
+      ? "เบราว์เซอร์นี้ยังใช้ไมค์กับระบบนี้ไม่ได้ กรุณาเปิดด้วย Safari (iOS 14.5 ขึ้นไป) หรือ Chrome"
+      : "เบราว์เซอร์นี้ยังใช้ไมค์กับระบบนี้ไม่ได้ กรุณาเปิดด้วย Google Chrome หรือ Microsoft Edge";
+  }
+
+  /* ===================== Init ===================== */
+  el.staffId.value = store.get("staffId", "");
+  el.staffName.value = store.get("staffName", "");
+  renderVoiceBtn();
+  api("start", {}, TIMEOUT.start).catch(() => {}); // warm up the Worker
+  document.addEventListener("visibilitychange", onVisibility);
+  el.staffId.addEventListener("keydown", (e) => { if (e.key === "Enter") el.staffName.focus(); });
+  el.staffName.addEventListener("keydown", (e) => { if (e.key === "Enter") startSession(); });
+  el.startBtn.addEventListener("click", startSession);
+  el.mic.addEventListener("click", onMicTap);
+  el.end.addEventListener("click", askEnd);
+  el.retry.addEventListener("click", () => { if (failedText) sendChat(failedText, true); });
+  el.again.addEventListener("click", () => startSession());
+  el.home.addEventListener("click", () => show("setup"));
+  el.voiceBtn.addEventListener("click", cycleVoice);
+  el.cancelEnd.addEventListener("click", () => closeDialog(false));
+  el.confirmEnd.addEventListener("click", () => closeDialog(true));
+
+  /* ===================== Screens ===================== */
+  function show(name) {
+    el.setup.hidden = name !== "setup";
+    el.session.hidden = name !== "session";
+    el.result.hidden = name !== "result";
+    if (name !== "session") releaseWakeLock();
+  }
+
+  async function startSession() {
+    const id = el.staffId.value.trim();
+    const name = el.staffName.value.trim();
+    if (!id || !name) {
+      (id ? el.staffName : el.staffId).focus();
+      el.notice.hidden = false;
+      el.notice.textContent = "กรอกรหัสพนักงานและชื่อ-นามสกุลก่อนเริ่มสอบ";
+      return;
+    }
+    if (!SR) { el.notice.hidden = false; return; }
+    if (el.remember.checked) { store.set("staffId", id); store.set("staffName", name); }
+    else { store.del("staffId"); store.del("staffName"); }
+    if (SR) el.notice.hidden = true;
+
+    unlockAudio();        // must happen inside this tap (iOS)
+    requestWakeLock();
+    stopAudio();
+
+    sessionId = (crypto.randomUUID ? crypto.randomUUID() : "SES-" + Date.now());
+    lines = []; turns = 0; failedText = ""; turnSeq++;
+    el.chat.textContent = "";
+    el.retry.hidden = true;
+    el.live.textContent = "";
+    updateTurns();
+
+    const pool = PERSONAS.filter((p) => p !== lastPersonaId);
+    personaId = pool[Math.floor(Math.random() * pool.length)];
+    lastPersonaId = personaId;
+    persona = null;
+    renderPersona(null);
+    show("session");
+    addSystem("ลูกค้าเดินเข้ามาในร้านแล้ว แตะปุ่มไมค์แล้วกล่าวทักทายได้เลย");
+    setState("idle");
+
+    try {
+      const data = await api("start", { personaId }, TIMEOUT.start);
+      persona = data.persona || null;
+    } catch { /* card is optional; the exam still works */ }
+    renderPersona(persona);
+  }
+
+  function renderPersona(p) {
+    if (!p) {
+      el.pAvatar.textContent = "?";
+      el.pName.textContent = "ลูกค้า";
+      el.pSub.textContent = "ข้อมูลลูกค้าจะปรากฏที่นี่";
+      return;
+    }
+    const nameNoTitle = String(p.name || "").replace(/^(คุณ|น้อง|เฮีย|ป้า|ลุง)/, "");
+    el.pAvatar.textContent = (nameNoTitle || p.name || "?").charAt(0);
+    el.pName.textContent = p.name || "ลูกค้า";
+    el.pSub.textContent = [p.profile, p.buying_intent && ("อยากซื้อ: " + p.buying_intent), p.personality && ("นิสัย: " + p.personality)]
+      .filter(Boolean).join(" | ");
+  }
+
+  function updateTurns() { el.turnCount.textContent = turns + " รอบ"; }
+
+  /* ===================== State machine ===================== */
+  function setState(s, msg, isError) {
+    state = s;
+    el.mic.classList.toggle("listening", s === "listening");
+    el.mic.classList.toggle("speaking", s === "speaking");
+    const labels = {
+      idle: "แตะเพื่อพูด",
+      listening: "แตะเพื่อส่ง",
+      thinking: "ลูกค้ากำลังคิด…",
+      speaking: "แตะเพื่อพูดแทรก",
+      busy: "กำลังประเมินผล…",
+      cooldown: "รอสักครู่…",
+    };
+    el.micLabel.textContent = labels[s] || labels.idle;
+    el.mic.disabled = s === "thinking" || s === "busy" || s === "cooldown";
+    el.end.disabled = s !== "idle" && s !== "speaking";
+    const defaults = {
+      idle: turns === 0 ? "พร้อมแล้ว เริ่มด้วยการทักทายลูกค้า" : "ถึงตาคุณพูด",
+      listening: "กำลังฟัง… พูดจบแล้วแตะปุ่มอีกครั้ง",
+      thinking: "ลูกค้ากำลังคิดคำตอบ",
+      speaking: "ลูกค้ากำลังพูด",
+      busy: "กรรมการกำลังประเมินผล ใช้เวลาประมาณ 5–10 วินาที",
+      cooldown: "",
+    };
+    setStatus(msg !== undefined ? msg : defaults[s], isError);
+  }
+
+  function setStatus(text, isError) {
+    el.status.textContent = text || "";
+    el.status.classList.toggle("error", !!isError);
+  }
+
+  function onMicTap(e) {
+    e.preventDefault();
+    unlockAudio();
+    if (state === "listening") stopListening();
+    else if (state === "idle" || state === "speaking") startListening();
+  }
+
+  /* ===================== Speech recognition ===================== */
+  // Android Chrome: continuous mode duplicates text, so we use short segments
+  // and restart automatically until the user taps "send".
+  let rec = null, recActive = false, userStopped = false, fatalError = false;
+  let committed = "", segmentFinal = "", interim = "", listenTimer = null;
+
+  function createRecognizer() {
+    const r = new SR();
+    r.lang = "th-TH";
+    r.interimResults = true;
+    r.continuous = !isAndroid;
+    r.maxAlternatives = 1;
+
+    r.onstart = () => { recActive = true; };
+    r.onresult = (ev) => {
+      let fin = "", tmp = "";
+      for (let i = 0; i < ev.results.length; i++) {
+        const t = ev.results[i][0].transcript;
+        if (ev.results[i].isFinal) fin += t; else tmp += t;
+      }
+      segmentFinal = fin;
+      interim = tmp;
+      renderLive();
+    };
+    r.onerror = (ev) => {
+      if (ev.error === "not-allowed" || ev.error === "service-not-allowed") {
+        fatalError = true;
+        setStatus("กรุณาอนุญาตให้เว็บไซต์ใช้ไมโครโฟน แล้วลองอีกครั้ง", true);
+      } else if (ev.error === "network") {
+        fatalError = true;
+        setStatus("ระบบแปลงเสียงต้องใช้อินเทอร์เน็ต กรุณาตรวจสอบสัญญาณ", true);
+      } else if (ev.error === "audio-capture") {
+        fatalError = true;
+        setStatus("ไม่พบไมโครโฟนในอุปกรณ์นี้", true);
+      }
+      // "no-speech" and "aborted": handled in onend
+    };
+    r.onend = () => {
+      recActive = false;
+      // iOS sometimes never marks text as final: keep the interim text too
+      committed = joinText(committed, segmentFinal || interim);
+      segmentFinal = ""; interim = "";
+      renderLive();
+      if (state === "listening" && !userStopped && !fatalError) {
+        try { r.start(); return; } catch { /* fall through and finish */ }
+      }
+      if (state === "listening") finishListening();
+    };
+    return r;
+  }
+
+  function startListening() {
+    if (!SR) return;
+    stopAudio();
+    turnSeq++; // ignore any audio still loading from the previous turn
+    committed = ""; segmentFinal = ""; interim = "";
+    userStopped = false; fatalError = false;
+    el.retry.hidden = true;
+    if (!rec) rec = createRecognizer();
+    try {
+      rec.start();
+    } catch (err) {
+      // Already running: restart cleanly
+      try { rec.abort(); } catch {}
+      rec = createRecognizer();
+      try { rec.start(); } catch { setStatus("เปิดไมค์ไม่สำเร็จ ลองแตะอีกครั้ง", true); return; }
+    }
+    vibrate([40, 60, 40]);
+    setState("listening");
+    renderLive();
+    clearTimeout(listenTimer);
+    listenTimer = setTimeout(() => { if (state === "listening") stopListening(); }, MAX_LISTEN_MS);
+  }
+
+  function stopListening() {
+    userStopped = true;
+    clearTimeout(listenTimer);
+    vibrate(40);
+    if (recActive) { try { rec.stop(); } catch { finishListening(); } }
+    else finishListening();
+  }
+
+  function finishListening() {
+    clearTimeout(listenTimer);
+    const text = joinText(committed, joinText(segmentFinal, "")).trim();
+    committed = ""; segmentFinal = ""; interim = "";
+    el.live.textContent = "";
+    if (state !== "listening") return;
+    if (!text) {
+      setState("idle", fatalError ? el.status.textContent : "ไม่ได้ยินเสียง แตะปุ่มแล้วพูดใหม่อีกครั้ง", true);
+      return;
+    }
+    sendChat(text);
+  }
+
+  function renderLive() {
+    if (state !== "listening") { el.live.textContent = ""; return; }
+    const done = joinText(committed, segmentFinal);
+    el.live.textContent = "";
+    if (!done && !interim) { el.live.textContent = "พูดได้เลย…"; return; }
+    const s = document.createElement("strong");
+    s.textContent = done;
+    el.live.append(s, document.createTextNode(interim ? " " + interim : ""));
+  }
+
+  function joinText(a, b) { return [a, b].map((x) => (x || "").trim()).filter(Boolean).join(" "); }
+
+  /* ===================== Chat turn ===================== */
+  async function sendChat(text, isRetry) {
+    const myTurn = ++turnSeq;
+    const t0 = performance.now();
+    if (!isRetry) addMessage("staff", text);
+    el.retry.hidden = true;
+    setState("thinking");
+
+    let data;
+    try {
+      data = await api("chat", {
+        sessionId, personaId, message: text,
+        history: lines.slice(-CHAT_HISTORY_LINES).join("\n"),
+      }, TIMEOUT.chat, 1);
+    } catch (err) {
+      if (err.type === "API_LIMIT") { failedText = text; cooldown(15); return; }
+      failedText = text;
+      el.retry.hidden = false;
+      setState("idle", "ส่งไม่สำเร็จ ตรวจสอบอินเทอร์เน็ต แล้วแตะ \"ส่งประโยคเดิมอีกครั้ง\" หรือพูดใหม่", true);
+      return;
     }
 
-    window.addEventListener('DOMContentLoaded', pingServer);
-    document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-            isServerAwake = false; 
-            pingServer();
-        }
+    failedText = "";
+    const reply = data.customer_reply || "ขอโทษนะ ช่วยพูดอีกทีได้ไหม";
+    lines.push("พนักงาน: " + text, "ลูกค้า: " + reply);
+    turns++;
+    updateTurns();
+    const msg = addMessage("ai", reply);
+    const tChat = performance.now() - t0;
+    if (myTurn !== turnSeq) return;
+
+    if (voiceMode === "off") {
+      setState("idle");
+      debug(tChat, null, "ปิดเสียง");
+      return;
+    }
+    setState("speaking", "กำลังเตรียมเสียง…");
+    const gender = data.gender || (persona && persona.gender) || "female";
+    const t1 = performance.now();
+    const source = await speak(reply, gender, msg, myTurn);
+    if (myTurn !== turnSeq) return;
+    if (state === "speaking") setStatus("ลูกค้ากำลังพูด");
+    debug(tChat, performance.now() - t1, source);
+  }
+
+  function cooldown(seconds) {
+    let left = seconds;
+    setState("cooldown", "");
+    const tick = () => {
+      if (left <= 0) {
+        el.retry.hidden = !failedText;
+        setState("idle", failedText ? "พร้อมแล้ว แตะ \"ส่งประโยคเดิมอีกครั้ง\" หรือพูดใหม่" : undefined);
+        return;
+      }
+      el.micLabel.textContent = "รอ " + left + " วินาที";
+      setStatus("ระบบมีผู้ใช้งานพร้อมกันมาก กรุณารอสักครู่");
+      left--;
+      setTimeout(tick, 1000);
+    };
+    tick();
+  }
+
+  /* ===================== Audio ===================== */
+  let audioCtx = null, currentSource = null;
+  let voices = [];
+
+  if ("speechSynthesis" in window) {
+    const loadVoices = () => { voices = window.speechSynthesis.getVoices(); };
+    loadVoices();
+    window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
+  }
+
+  function unlockAudio() {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!audioCtx) {
+      audioCtx = new AC();
+      // iOS: play one silent sample inside the tap to unlock output
+      try {
+        const b = audioCtx.createBuffer(1, 1, 22050);
+        const s = audioCtx.createBufferSource();
+        s.buffer = b; s.connect(audioCtx.destination); s.start(0);
+      } catch {}
+    }
+    if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+  }
+
+  // Returns which voice source was used: "ai" | "device" | "none"
+  async function speak(text, gender, msgEl, myTurn) {
+    const useAI = voiceMode === "ai" && Date.now() > aiVoiceBlockedUntil && audioCtx;
+    if (useAI) {
+      try {
+        const buffer = await fetchTts(text);
+        if (myTurn !== turnSeq) return "ai";
+        if (msgEl) msgEl._audio = buffer; // replay costs nothing
+        playBuffer(buffer, myTurn);
+        return "ai";
+      } catch (err) {
+        if (err.type === "API_LIMIT") aiVoiceBlockedUntil = Date.now() + 60000;
+        if (myTurn !== turnSeq) return "none";
+      }
+    }
+    return speakDevice(text, gender, myTurn) ? "device" : "none";
+  }
+
+  async function fetchTts(text) {
+    const data = await api("tts", { text, personaId }, TIMEOUT.tts, 0);
+    const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
+    const part = parts.find((p) => p.inlineData && p.inlineData.data);
+    if (!part) throw Object.assign(new Error("No audio"), { type: "TTS_ERROR" });
+    const rateMatch = /rate=(\d+)/.exec(part.inlineData.mimeType || "");
+    return pcmToBuffer(part.inlineData.data, rateMatch ? Number(rateMatch[1]) : 24000);
+  }
+
+  function pcmToBuffer(base64, sampleRate) {
+    const bin = atob(base64);
+    const len = bin.length - (bin.length % 2);
+    const view = new DataView(new ArrayBuffer(len));
+    for (let i = 0; i < len; i++) view.setUint8(i, bin.charCodeAt(i));
+    const samples = len / 2;
+    const buffer = audioCtx.createBuffer(1, samples, sampleRate);
+    const ch = buffer.getChannelData(0);
+    for (let i = 0; i < samples; i++) ch[i] = view.getInt16(i * 2, true) / 32768;
+    return buffer;
+  }
+
+  function playBuffer(buffer, myTurn) {
+    stopAudio();
+    if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+    const src = audioCtx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(audioCtx.destination);
+    src.onended = () => {
+      if (currentSource !== src) return;
+      currentSource = null;
+      if (state === "speaking" && (myTurn === undefined || myTurn === turnSeq)) setState("idle");
+    };
+    currentSource = src;
+    src.start(0);
+  }
+
+  function speakDevice(text, gender, myTurn) {
+    if (!("speechSynthesis" in window)) { if (state === "speaking") setState("idle"); return false; }
+    const synth = window.speechSynthesis;
+    synth.cancel();
+    const u = new SpeechSynthesisUtterance(text.replace(/["'“”‘’]/g, "").trim());
+    u.lang = "th-TH";
+    u.rate = 1;   // neutral
+    u.pitch = 1;  // neutral
+    const th = (voices.length ? voices : synth.getVoices()).filter((v) => /^th/i.test(v.lang));
+    if (th.length) {
+      const hint = gender === "male" ? /male|niwat|ชาย/i : /female|kanya|premwadee|achara|หญิง/i;
+      u.voice = th.find((v) => hint.test(v.name) && !(gender === "male" && /female/i.test(v.name))) || th[0];
+    }
+    const done = () => { if (state === "speaking" && (myTurn === undefined || myTurn === turnSeq)) setState("idle"); };
+    u.onend = done;
+    u.onerror = done;
+    synth.speak(u);
+    return true;
+  }
+
+  function stopAudio() {
+    if (currentSource) {
+      const s = currentSource;
+      currentSource = null;
+      try { s.stop(); } catch {}
+    }
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+  }
+
+  function replay(msgEl, text) {
+    if (state === "listening" || state === "thinking" || state === "busy") return;
+    unlockAudio();
+    turnSeq++;
+    const myTurn = turnSeq;
+    setState("speaking");
+    if (msgEl._audio && audioCtx) playBuffer(msgEl._audio, myTurn);
+    else speakDevice(text, (persona && persona.gender) || "female", myTurn);
+  }
+
+  /* ===================== Messages ===================== */
+  function addMessage(who, text) {
+    const div = document.createElement("div");
+    div.className = "msg " + who;
+    if (who === "ai") {
+      const t = document.createElement("span");
+      t.className = "txt";
+      t.textContent = text;
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "replay";
+      b.setAttribute("aria-label", "ฟังอีกครั้ง");
+      b.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>';
+      b.addEventListener("click", () => replay(div, text));
+      div.append(t, b);
+    } else {
+      div.textContent = text;
+    }
+    el.chat.appendChild(div);
+    el.chat.scrollTop = el.chat.scrollHeight;
+    return div;
+  }
+
+  function addSystem(text) {
+    const div = document.createElement("div");
+    div.className = "msg system";
+    div.textContent = text;
+    el.chat.appendChild(div);
+  }
+
+  /* ===================== Evaluate ===================== */
+  function askEnd() {
+    if (turns < MIN_TURNS) {
+      setStatus("คุยกับลูกค้าอย่างน้อย " + MIN_TURNS + " รอบก่อนส่งประเมิน", true);
+      return;
+    }
+    if (typeof el.dialog.showModal === "function") el.dialog.showModal();
+    else if (window.confirm("จบการสนทนาและส่งประเมินผล?")) evaluate();
+  }
+
+  function closeDialog(ok) {
+    el.dialog.close();
+    if (ok) evaluate();
+  }
+
+  async function evaluate() {
+    stopAudio();
+    turnSeq++;
+    setState("busy");
+    try {
+      const data = await api("evaluate", {
+        sessionId, personaId,
+        staffId: el.staffId.value.trim(),
+        staffName: el.staffName.value.trim(),
+        history: lines.join("\n"),
+      }, TIMEOUT.evaluate, 1);
+      renderResult(data);
+      show("result");
+      el.result.scrollTop = 0;
+    } catch (err) {
+      setState("idle", err.type === "API_LIMIT"
+        ? "ระบบมีผู้ใช้งานพร้อมกันมาก รอ 15 วินาทีแล้วกด \"จบและดูผล\" อีกครั้ง"
+        : "ประเมินผลไม่สำเร็จ ตรวจสอบอินเทอร์เน็ตแล้วกด \"จบและดูผล\" อีกครั้ง", true);
+    }
+  }
+
+  function renderResult(d) {
+    const pct = Number(d.score_percentage) || 0;
+    el.score.textContent = pct + "%";
+    el.verdict.textContent = d.is_pass ? "ผ่านเกณฑ์" : "ยังไม่ผ่านเกณฑ์";
+    el.verdict.className = "verdict " + (d.is_pass ? "pass" : "fail");
+    const passed = d.passed_steps != null ? d.passed_steps : Math.round(pct / 20);
+    el.scoreSub.textContent = "ผ่าน " + passed + " จาก 5 ขั้นตอน (เกณฑ์ 4 ขั้นตอน) | ลูกค้า: " + ((persona && persona.name) || personaId) + " | " + turns + " รอบ";
+
+    el.resultSteps.textContent = "";
+    (d.steps || []).forEach((s) => {
+      const li = document.createElement("li");
+      const mark = document.createElement("div");
+      mark.className = "mark " + (s.passed ? "ok" : "no");
+      mark.textContent = s.passed ? "✓" : "✕";
+      mark.setAttribute("aria-label", s.passed ? "ผ่าน" : "ไม่ผ่าน");
+      const body = document.createElement("div");
+      const n = document.createElement("div"); n.className = "step-name"; n.textContent = s.step + ". " + s.name;
+      const r = document.createElement("div"); r.className = "step-reason"; r.textContent = s.reason || "";
+      body.append(n, r);
+      if (!s.passed && s.tip) {
+        const t = document.createElement("div"); t.className = "step-tip"; t.textContent = "ลองพูดว่า: " + s.tip;
+        body.append(t);
+      }
+      li.append(mark, body);
+      el.resultSteps.appendChild(li);
     });
-    staffIdInput.addEventListener('blur', pingServer);
-    staffNameInput.addEventListener('blur', pingServer);
 
-    // 🌟 ระบบ Toggle (แตะเพื่อเปิด/ปิดไมค์)
-    micBtn.addEventListener('click', toggleMic);
+    el.summary.textContent = d.summary || "ไม่มีสรุปจากกรรมการ";
+    el.keywords.textContent = "";
+    (d.keyword_details || []).forEach((k) => {
+      const li = document.createElement("li"); li.textContent = k; el.keywords.appendChild(li);
+    });
+    el.transcript.textContent = lines.join("\n");
+  }
 
-    function toggleMic(e) {
-        if(e) e.preventDefault(); 
-
-        if (isProcessing) return; 
-
-        if (!staffIdInput.value || !staffNameInput.value) {
-            alert("กรุณากรอกรหัสพนักงานและชื่อให้ครบถ้วนก่อนเริ่มสอบครับ");
-            return;
+  /* ===================== Network ===================== */
+  async function api(action, body, timeoutMs, retries = 0) {
+    let lastErr;
+    for (let i = 0; i <= retries; i++) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+      try {
+        const res = await fetch(WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(Object.assign({ action }, body)),
+          signal: ctrl.signal,
+        });
+        clearTimeout(timer);
+        let data = null;
+        try { data = await res.json(); } catch {}
+        if (!res.ok || !data || data.error) {
+          const err = new Error((data && data.error) || ("HTTP " + res.status));
+          err.type = (data && data.type) || (res.status === 429 ? "API_LIMIT" : "HTTP_ERROR");
+          err.status = res.status;
+          throw err;
         }
-
-        if (isRecording) {
-            recognition.stop(); 
-            vibrateDevice(50); 
-        } else {
-            try { 
-                recognition.start(); 
-                vibrateDevice([50, 100, 50]); 
-                
-                // ปลดล็อกลำโพงมือถือ
-                if ('speechSynthesis' in window) {
-                    let unlockSpeech = new SpeechSynthesisUtterance('');
-                    window.speechSynthesis.speak(unlockSpeech);
-                }
-            } catch(err) {
-                console.log("Mic start error:", err);
-            }
+        return data;
+      } catch (err) {
+        clearTimeout(timer);
+        lastErr = err;
+        if (err.type === "API_LIMIT" || err.status === 400 || err.status === 403) break;
+        if (i < retries) {
+          setStatus("สัญญาณไม่เสถียร กำลังลองใหม่…");
+          await new Promise((r) => setTimeout(r, 1200));
         }
+      }
     }
+    throw lastErr;
+  }
 
-    function vibrateDevice(pattern) {
-        if ("vibrate" in navigator) {
-            navigator.vibrate(pattern);
-        }
+  /* ===================== Voice mode ===================== */
+  function cycleVoice() {
+    const i = VOICE_MODES.findIndex((m) => m.id === voiceMode);
+    voiceMode = VOICE_MODES[(i + 1) % VOICE_MODES.length].id;
+    store.set("voiceMode", voiceMode);
+    renderVoiceBtn();
+    if (voiceMode === "off") { stopAudio(); if (state === "speaking") setState("idle"); }
+  }
+  function renderVoiceBtn() {
+    const m = VOICE_MODES.find((x) => x.id === voiceMode) || VOICE_MODES[0];
+    voiceMode = m.id;
+    el.voiceBtn.textContent = m.label;
+  }
+
+  /* ===================== Device helpers ===================== */
+  function vibrate(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch {} }
+
+  async function requestWakeLock() {
+    try { if ("wakeLock" in navigator && !wakeLock) wakeLock = await navigator.wakeLock.request("screen"); } catch {}
+  }
+  function releaseWakeLock() {
+    try { if (wakeLock) wakeLock.release(); } catch {}
+    wakeLock = null;
+  }
+
+  function onVisibility() {
+    if (document.visibilityState === "hidden") {
+      if (state === "listening") { userStopped = true; try { rec.abort(); } catch {} setState("idle", "หยุดฟังเพราะสลับหน้าจอ แตะเพื่อพูดใหม่"); }
+      stopAudio();
+      if (state === "speaking") setState("idle");
+      wakeLock = null;
+    } else {
+      api("start", {}, TIMEOUT.start).catch(() => {});
+      if (!el.session.hidden) requestWakeLock();
     }
+  }
 
-    recognition.onstart = function() {
-        isRecording = true;
-        micBtn.classList.add('recording');
-        micBtn.innerText = "🛑 กำลังฟัง... (แตะเพื่อหยุดและส่ง)";
-        statusText.innerText = "กำลังรับฟังเสียงของคุณ...";
-    };
-
-    recognition.onresult = function(event) {
-        const transcript = event.results[0][0].transcript;
-        addMessage(transcript, 'staff');
-        sendToAI(transcript);
-    };
-
-    recognition.onend = function() {
-        isRecording = false;
-        micBtn.classList.remove('recording');
-        micBtn.innerText = "🎤 แตะเพื่อพูด (แตะอีกครั้งเพื่อส่ง)";
-        if(statusText.innerText === "กำลังรับฟังเสียงของคุณ...") {
-            statusText.innerText = "กำลังส่งข้อมูล...";
-        }
-    };
-
-    async function sendToAI(message, retries = 2) {
-        if (isProcessing) return; 
-        isProcessing = true;
-
-        statusText.innerText = "ลูกค้ากำลังคิดคำตอบ...";
-        micBtn.disabled = true;
-        endBtn.disabled = true;
-
-        const payload = {
-            action: "chat",
-            sessionId: currentSessionId, 
-            message: message,
-            personaId: activePersona, 
-            history: chatHistory,
-            activeModel: activeSessionModel 
-        };
-
-        for (let i = 0; i <= retries; i++) {
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000); 
-
-                const response = await fetch(WEBHOOK_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload),
-                    signal: controller.signal
-                });
-                
-                clearTimeout(timeoutId);
-
-                if (!response.ok) throw new Error("HTTP Error " + response.status);
-
-                const data = await response.json();
-                
-                if(data.error) {
-                    if (data.error.includes("QUOTA_EXCEEDED") || data.type === "API_LIMIT") {
-                        startCooldown(15); 
-                        return;
-                    }
-                    throw new Error(data.error); 
-                }
-
-                if (data.used_model) activeSessionModel = data.used_model;
-
-                addMessage(data.customer_reply, 'ai');
-                if (data.audio_base64) {
-                    playGeminiAudio(data.audio_base64, data.customer_reply);
-                } else {
-                    speakText(data.customer_reply); 
-                }
-                
-                chatHistory += `\nพนักงาน: ${message}\nลูกค้า: ${data.customer_reply}`;
-                let modelName = activeSessionModel ? activeSessionModel.replace("models/", "") : "gemini";
-                statusText.innerText = `พร้อมใช้งาน (ล็อกใช้โมเดล: ${modelName})`;
-                
-                isProcessing = false;
-                micBtn.disabled = false;
-                endBtn.disabled = false;
-                return;
-
-            } catch (error) {
-                if (i < retries) {
-                    statusText.innerText = `สัญญาณขัดข้อง กำลังพยายามเชื่อมต่อใหม่ (ครั้งที่ ${i + 1})...`;
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                } else {
-                    statusText.innerText = "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ โปรดตรวจสอบอินเทอร์เน็ตแล้วลองพูดใหม่";
-                    isProcessing = false;
-                    micBtn.disabled = false;
-                    endBtn.disabled = false;
-                }
-            }
-        }
-    }
-
-    function startCooldown(seconds) {
-        let timeLeft = seconds;
-        micBtn.disabled = true;
-        endBtn.disabled = true;
-        micBtn.style.backgroundColor = "#999"; 
-        
-        let timer = setInterval(() => {
-            statusText.innerText = `เซิร์ฟเวอร์คิวเต็ม กรุณารอ ${timeLeft} วินาที...`;
-            micBtn.innerText = `รอสักครู่ (${timeLeft}s)`;
-            timeLeft--;
-
-            if (timeLeft < 0) {
-                clearInterval(timer);
-                isProcessing = false; // 🌟 จุดสำคัญ: ต้องปลดล็อกตัวแปรนี้ด้วย
-                micBtn.disabled = false;
-                endBtn.disabled = false;
-                micBtn.style.backgroundColor = "#222";
-                micBtn.innerText = "🎤 แตะเพื่อพูด (แตะอีกครั้งเพื่อส่ง)";
-                statusText.innerText = "พร้อมใช้งานอีกครั้ง";
-            }
-        }, 1000);
-    }
-
-    async function endConversation() {
-        if (!chatHistory) {
-            alert("คุณยังไม่ได้เริ่มการสนทนาเลยครับ");
-            return;
-        }
-
-        if (isProcessing) return;
-        isProcessing = true;
-        
-        micBtn.disabled = true;
-        endBtn.disabled = true;
-        statusText.innerText = "กรรมการกำลังประเมินผลการสอบ กรุณารอสักครู่...";
-
-        const payload = { 
-            action: "evaluate", 
-            sessionId: currentSessionId, 
-            history: chatHistory,
-            staffId: staffIdInput.value,
-            staffName: staffNameInput.value,
-            personaId: activePersona
-        };
-
-        try {
-            const response = await fetch(WEBHOOK_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
-
-            const data = await response.json();
-            if (data.error) throw new Error(data.error);
-
-            feedbackBox.style.display = "block";
-            let summaryText = data.summary || "ระบบไม่สามารถสร้างคำอธิบายได้ โปรดลองทดสอบใหม่อีกครั้ง";
-            
-            if (data.is_pass) {
-                feedbackBox.style.backgroundColor = "#e8f5e9";
-                feedbackBox.style.borderColor = "#c8e6c9";
-                feedbackBox.style.color = "#2e7d32";
-                feedbackBox.innerHTML = `✅ <b>สอบผ่านเกณฑ์!</b><br><br>${summaryText}`;
-            } else {
-                feedbackBox.style.backgroundColor = "#ffebee";
-                feedbackBox.style.borderColor = "#ffcdd2";
-                feedbackBox.style.color = "#c62828";
-                feedbackBox.innerHTML = `❌ <b>ยังไม่ผ่านเกณฑ์</b><br><br>${summaryText}`;
-            }
-            
-            addMessage(`📊 ผลการประเมิน:\n${summaryText}`, 'ai');
-            statusText.innerText = "การสอบเสร็จสิ้น (กรุณารีเฟรชหน้าเว็บเพื่อเริ่มใหม่)";
-            
-            chatHistory = "";
-            currentSessionId = "SES-" + Date.now(); 
-
-        } catch (error) {
-            statusText.innerText = "เกิดข้อผิดพลาดในการประเมินผล กรุณาลองใหม่อีกครั้ง";
-            micBtn.disabled = false;
-            endBtn.disabled = false;
-        } finally {
-            isProcessing = false;
-        }
-    }
-
-    function addMessage(text, sender) {
-        const div = document.createElement('div');
-        div.className = `msg ${sender}`;
-        div.innerText = text;
-        chatBox.appendChild(div);
-        chatBox.scrollTop = chatBox.scrollHeight; 
-    }
-
-    function speakText(text, gender = 'female') {
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel(); 
-            
-            let speakableText = text.replace(/[\n\r]+/g, ' ') 
-                                    .replace(/\s{2,}/g, ' ')  
-                                    .replace(/["'”’“‘]/g, '')
-                                    .replace(/\.\.\./g, '')
-                                    .trim();
-
-            const utterance = new SpeechSynthesisUtterance(speakableText);
-            utterance.lang = 'th-TH'; 
-            utterance.rate = 1.15; 
-            utterance.pitch = gender === 'female' ? 1.2 : 0.8; 
-            
-            const voices = window.speechSynthesis.getVoices();
-            const thaiVoices = voices.filter(voice => voice.lang === 'th-TH' || voice.lang.includes('th'));
-
-            if (thaiVoices.length > 0) {
-                if (gender === 'female') {
-                    const femaleVoice = thaiVoices.find(v => v.name.includes('Female') || v.name.includes('Kanya') || v.name.includes('Premwadee') || v.name.includes('Google')) || thaiVoices[0];
-                    utterance.voice = femaleVoice;
-                } else {
-                    const maleVoice = thaiVoices.find(v => v.name.includes('Male') || v.name.includes('Niwat')) || thaiVoices[0];
-                    utterance.voice = maleVoice;
-                }
-            }
-
-            window.speechSynthesis.speak(utterance);
-        }
-    }
-    
-    async function playGeminiAudio(base64PCM, fallbackText) {
-        try {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            const audioCtx = new AudioContext();
-            
-            const binaryString = window.atob(base64PCM);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
-            
-            const int16Array = new Int16Array(bytes.buffer);
-            const float32Array = new Float32Array(int16Array.length);
-            for (let i = 0; i < int16Array.length; i++) float32Array[i] = int16Array[i] / 32768.0;
-            
-            const audioBuffer = audioCtx.createBuffer(1, float32Array.length, 24000);
-            audioBuffer.getChannelData(0).set(float32Array);
-            
-            const source = audioCtx.createBufferSource();
-            source.buffer = audioBuffer;
-            source.connect(audioCtx.destination);
-            source.start(0);
-            
-            if (window.currentAudioSource) {
-                try { window.currentAudioSource.stop(); } catch(e){}
-            }
-            window.currentAudioSource = source;
-
-        } catch (err) {
-            console.error("Audio Decode Error:", err);
-            speakText(fallbackText);
-        }
-    }
+  function debug(tChat, tVoice, source) {
+    const msg = "แชท " + (tChat / 1000).toFixed(1) + " วิ" + (tVoice != null ? " | เสียง (" + source + ") " + (tVoice / 1000).toFixed(1) + " วิ" : "");
+    console.log("[latency]", msg);
+    if (DEBUG) setStatus(msg);
+  }
+})();
 </script>
-
 </body>
 </html>
