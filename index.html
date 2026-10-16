@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light only">
   <meta name="theme-color" content="#FFF8F1">
+  <meta http-equiv="Cache-Control" content="no-cache">
   <title>ฝึกขายกับลูกค้า AI | สอบมาตรฐานบริการ</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -167,6 +168,7 @@
     }
     .btn-secondary:active { background: rgba(118,118,128,.2); }
 
+    .version-tag { margin: 8px 0 0; text-align: center; font-size: 13px; color: var(--label-2); }
     .notice {
       border-radius: var(--r-cell);
       padding: 12px 16px;
@@ -406,10 +408,10 @@
         </label>
         <label class="cell">
           <span>ส่งอัตโนมัติเมื่อหยุดพูด</span>
-          <input type="checkbox" role="switch" class="switch" id="autoSend" checked>
+          <input type="checkbox" role="switch" class="switch" id="autoSend">
         </label>
       </div>
-      <p class="group-footer">เมื่อเปิด ระบบจะส่งให้เองหลังหยุดพูดประมาณ 1.5 วินาที ไม่ต้องแตะปุ่มซ้ำ ถ้ามักพูดช้าหรือเว้นจังหวะนาน แนะนำให้ปิด</p>
+      <p class="group-footer">เมื่อเปิด ระบบจะส่งให้เองหลังหยุดพูดประมาณ 2 วินาที ถ้าปิด ให้แตะปุ่มไมค์อีกครั้งเมื่อพูดจบ</p>
 
       <div class="group-title">ขั้นตอนที่กรรมการจะประเมิน</div>
       <ol class="group steps">
@@ -419,10 +421,11 @@
         <li>ตอบข้อโต้แย้งของลูกค้า</li>
         <li>ปิดการขาย</li>
       </ol>
-      <p class="group-footer">แตะปุ่มไมค์ 1 ครั้งเพื่อเริ่มพูด พูดจบแล้วรอสักครู่หรือแตะอีกครั้งเพื่อส่ง ผ่านเกณฑ์เมื่อได้ 4 จาก 5 ขั้นตอน</p>
+      <p class="group-footer">แตะปุ่มไมค์ 1 ครั้งเพื่อเริ่มพูด พูดจบแล้วแตะอีกครั้งเพื่อส่ง ผ่านเกณฑ์เมื่อได้ 4 จาก 5 ขั้นตอน</p>
 
       <div class="start-bar">
         <button class="btn-primary" id="startBtn" type="button">เริ่มสอบ</button>
+        <p class="version-tag" id="versionTag">เวอร์ชัน 2.5</p>
       </div>
     </div>
   </section>
@@ -532,23 +535,12 @@
   const TIMEOUT = { start: 8000, chat: 12000, tts: 20000, evaluate: 30000 };
   const CHAT_HISTORY_LINES = 8;
   const DEBUG = new URLSearchParams(location.search).has("debug");
-
-  // Speed features. Phase 1 + item 2 = ON. Item 6 stays OFF until
-  // tools/benchmark_latency.py shows the voice really streams.
-  // URL overrides for testing: ?combined=0  ?stream=1
-  const APP_VERSION = "2.3";
+  const APP_VERSION = "2.5";
   const QS = new URLSearchParams(location.search);
-  const FEATURES = {
-    fillers: true,                                         // Phase 1: short "อืม / อ๋อ ครับ" while waiting
-    combinedRequest: QS.get("combined") !== "0",           // Item 2: text + voice in one request
-    streamTts: false || QS.get("stream") === "1",          // Item 6: streaming voice (experimental)
-  };
-  const STREAM_MAX_FAILS = 2;   // after 2 stream failures in a session, stop trying it
-  const AUTO_SEND_SILENCE_MS = 1500;  // Phase 1: send after this much silence (if enabled)
-  const FILLER_DELAY_MS = 250;        // start the filler this soon after sending
-  const FILLER_PROBABILITY = 0.8;     // not every turn, so it does not feel robotic
-  const FILLER_BASE = "fillers/";     // optional static files; otherwise the Worker makes them automatically
-  const FILLER_COUNT = 4;
+  // Text + voice in one request (network only, never touches the mic).
+  // Falls back to chat + tts automatically if the Worker is older. Off: ?combined=0
+  const COMBINED_REQUEST = QS.get("combined") !== "0";
+  const AUTO_SEND_SILENCE_MS = 2000;
 
   /* ===================== Elements ===================== */
   const $ = (id) => document.getElementById(id);
@@ -585,12 +577,10 @@
   let turnSeq = 0;               // guards late audio from older turns
   let failedText = "";
   let wakeLock = null;
-  let metrics = [];              // Phase 0: one timing record per turn, sent with the evaluation
-  let tapAt = 0;                 // when the staff finished speaking (tap or auto-send)
-  let lastAuto = false;
-  let streamFails = 0;           // item 6 safety: per session
-  let combinedUnsupported = false; // set if the deployed Worker has no chat_voice yet
-  const useStream = () => FEATURES.streamTts && streamFails < STREAM_MAX_FAILS;
+  let metrics = [];              // per-turn timings, sent with the evaluation
+  let tapAt = 0, lastAuto = false;
+  let combinedUnsupported = false;
+  let micLog = [];               // ?debug=1: what the microphone did
 
   const VOICE_MODES = [
     { id: "ai", label: "🔊 เสียง AI" },
@@ -616,9 +606,8 @@
   /* ===================== Init ===================== */
   el.staffId.value = store.get("staffId", "");
   el.staffName.value = store.get("staffName", "");
-  el.autoSend.checked = store.get("autoSend", "1") === "1";
+  el.autoSend.checked = store.get("autoSend", "0") === "1";
   el.autoSend.addEventListener("change", () => store.set("autoSend", el.autoSend.checked ? "1" : "0"));
-  loadFillerManifest();
   renderVoiceBtn();
   api("start", {}, TIMEOUT.start).catch(() => {}); // warm up the Worker
   document.addEventListener("visibilitychange", onVisibility);
@@ -657,12 +646,12 @@
     else { store.del("staffId"); store.del("staffName"); }
     if (SR) el.notice.hidden = true;
 
-    unlockAudio();        // must happen inside this tap (iOS)
-    requestWakeLock();
     stopAudio();
+    unlockAudio();        // must happen inside this tap (iOS); never on the mic tap
+    requestWakeLock();
 
     sessionId = (crypto.randomUUID ? crypto.randomUUID() : "SES-" + Date.now());
-    lines = []; turns = 0; failedText = ""; turnSeq++; metrics = []; streamFails = 0;
+    lines = []; turns = 0; failedText = ""; turnSeq++; metrics = [];
     releaseAudioUrls();
     setPersonaOpen(true);
     el.chat.textContent = "";
@@ -684,7 +673,6 @@
       persona = data.persona || null;
     } catch { /* card is optional; the exam still works */ }
     renderPersona(persona);
-    preloadFillers(personaId, (persona && persona.gender) || null);
   }
 
   function renderPersona(p) {
@@ -745,7 +733,8 @@
 
   function onMicTap(e) {
     e.preventDefault();
-    unlockAudio();
+    // No audio playback here: starting media in the same tap as the mic can
+    // block speech capture on phones.
     if (state === "listening") stopListening();
     else if (state === "idle" || state === "speaking") startListening();
   }
@@ -754,7 +743,8 @@
   // Android Chrome: continuous mode duplicates text, so we use short segments
   // and restart automatically until the user taps "send".
   let rec = null, recActive = false, userStopped = false, fatalError = false;
-  let committed = "", segmentFinal = "", interim = "", listenTimer = null, silenceTimer = null;
+  let committed = "", segmentFinal = "", interim = "", listenTimer = null;
+  let startWatchdog = null, abortedCount = 0, silenceTimer = null, lastHeard = "";
 
   function createRecognizer() {
     const r = new SR();
@@ -763,7 +753,7 @@
     r.continuous = !isAndroid;
     r.maxAlternatives = 1;
 
-    r.onstart = () => { recActive = true; };
+    r.onstart = () => { recActive = true; clearTimeout(startWatchdog); micTrace("start"); };
     r.onresult = (ev) => {
       let fin = "", tmp = "";
       for (let i = 0; i < ev.results.length; i++) {
@@ -776,6 +766,7 @@
       armAutoSend();
     };
     r.onerror = (ev) => {
+      micTrace("error:" + ev.error);
       if (ev.error === "not-allowed" || ev.error === "service-not-allowed") {
         fatalError = true;
         setStatus("กรุณาอนุญาตให้เว็บไซต์ใช้ไมโครโฟน แล้วลองอีกครั้ง", true);
@@ -786,10 +777,18 @@
         fatalError = true;
         setStatus("ไม่พบไมโครโฟนในอุปกรณ์นี้", true);
       }
-      // "no-speech" and "aborted": handled in onend
+      else if (ev.error === "aborted" && !userStopped) {
+        abortedCount++;
+        if (abortedCount >= 2) {
+          fatalError = true;
+          setStatus("ไมค์ถูกขัดจังหวะ ลองปิดแอปอื่นที่ใช้ไมค์หรือเสียงอยู่ แล้วแตะใหม่", true);
+        }
+      }
+      // "no-speech": handled in onend (restarts until the staff taps send)
     };
     r.onend = () => {
       recActive = false;
+      micTrace("end");
       // iOS sometimes never marks text as final: keep the interim text too
       committed = joinText(committed, segmentFinal || interim);
       segmentFinal = ""; interim = "";
@@ -807,10 +806,20 @@
     stopAudio();
     turnSeq++; // ignore any audio still loading from the previous turn
     committed = ""; segmentFinal = ""; interim = "";
-    userStopped = false; fatalError = false;
+    userStopped = false; fatalError = false; abortedCount = 0; lastHeard = "";
     el.retry.hidden = true;
-    if (navigator.audioSession) { try { navigator.audioSession.type = "auto"; } catch {} }
     if (!rec) rec = createRecognizer();
+    // If the mic has not started within 2.5 s, something is holding it: say so.
+    clearTimeout(startWatchdog);
+    startWatchdog = setTimeout(() => {
+      if (state === "listening" && !recActive) {
+        micTrace("watchdog");
+        userStopped = true;
+        try { rec.abort(); } catch {}
+        rec = null;
+        setState("idle", "เปิดไมค์ไม่สำเร็จ แตะปุ่มอีกครั้ง (ถ้ายังไม่ได้ ให้ตรวจสิทธิ์ไมโครโฟนของเบราว์เซอร์ แล้วรีเฟรชหน้า)", true);
+      }
+    }, 2500);
     try {
       rec.start();
     } catch (err) {
@@ -826,20 +835,21 @@
     listenTimer = setTimeout(() => { if (state === "listening") stopListening(); }, MAX_LISTEN_MS);
   }
 
-  // Phase 1: auto-send after a pause, only once some speech has been heard
   function armAutoSend() {
-    clearTimeout(silenceTimer);
     if (!el.autoSend.checked || state !== "listening") return;
-    if (!joinText(committed, segmentFinal || interim)) return;
+    const heard = joinText(committed, segmentFinal || interim);
+    if (!heard || heard === lastHeard) return;      // only new words restart the countdown
+    lastHeard = heard;
+    clearTimeout(silenceTimer);
     silenceTimer = setTimeout(() => { if (state === "listening") stopListening(true); }, AUTO_SEND_SILENCE_MS);
   }
 
   function stopListening(auto) {
     userStopped = true;
-    tapAt = performance.now();
     lastAuto = auto === true;
-    clearTimeout(listenTimer);
+    tapAt = performance.now();
     clearTimeout(silenceTimer);
+    clearTimeout(listenTimer);
     vibrate(40);
     if (recActive) { try { rec.stop(); } catch { finishListening(); } }
     else finishListening();
@@ -848,6 +858,7 @@
   function finishListening() {
     clearTimeout(listenTimer);
     clearTimeout(silenceTimer);
+    clearTimeout(startWatchdog);
     const text = joinText(committed, joinText(segmentFinal, "")).trim();
     committed = ""; segmentFinal = ""; interim = "";
     el.live.textContent = "";
@@ -874,115 +885,78 @@
   function joinText(a, b) { return [a, b].map((x) => (x || "").trim()).filter(Boolean).join(" "); }
 
   /* ===================== Chat turn ===================== */
-  // Flow (AI voice): staff bubble -> typing bubble (+ filler sound) -> text + voice together.
+  // Flow: staff bubble -> "typing" bubble -> text + voice revealed together.
   async function sendChat(text, isRetry) {
     const myTurn = ++turnSeq;
-    const t0 = isRetry || !tapAt ? performance.now() : tapAt;   // timings start when the staff stopped speaking
-    const m = {
-      turn: turns + 1,
-      mode: voiceMode,
-      path: voiceMode !== "ai" ? "text" : useStream() ? "stream" : FEATURES.combinedRequest && !combinedUnsupported ? "combined" : "separate",
-      auto: !isRetry && lastAuto,
-      retry: !!isRetry,
-      stt_ms: isRetry ? null : Math.round(performance.now() - t0),
-    };
+    const t0 = !isRetry && tapAt ? tapAt : performance.now();
+    const m = { turn: turns + 1, mode: voiceMode, auto: !isRetry && lastAuto, stt_ms: isRetry ? null : Math.round(performance.now() - t0) };
     tapAt = 0;
     if (!isRetry) addMessage("staff", text);
     el.retry.hidden = true;
     setState("thinking");
     const bubble = addTyping();
 
-    // Phase 1: filler sound while we wait (AI voice only)
-    const filler = voiceMode === "ai" ? scheduleFiller(myTurn, t0, m) : { done: Promise.resolve(), cancel() {} };
-
     const body = { sessionId, personaId, message: text, history: lines.slice(-CHAT_HISTORY_LINES).join("\n") };
+    const useCombined = voiceMode === "ai" && COMBINED_REQUEST && !combinedUnsupported;
+    m.path = voiceMode !== "ai" ? "text" : useCombined ? "combined" : "separate";
+    let data, preUrl = null;
     const tc = performance.now();
-    let data, url = null;
     try {
       let r = null;
-      if (m.path === "combined") {
-        try {
-          r = await chatVoice(body, TIMEOUT.chat + TIMEOUT.tts);
-        } catch (e) {
+      if (useCombined) {
+        try { r = await chatVoice(body, TIMEOUT.chat + TIMEOUT.tts); }
+        catch (e) {
           if (e.status !== 400) throw e;
-          combinedUnsupported = true;          // Worker is older: use chat + tts from now on
+          combinedUnsupported = true;            // older Worker: use chat + tts from now on
           m.path = "separate";
         }
       }
-      if (r) {
-        data = r.data; url = r.url;
-        m.tts_ok = !!url;
-      } else {
-        data = await api("chat", body, TIMEOUT.chat, 1);
-      }
+      if (r) { data = r.data; preUrl = r.url; }
+      else data = await api("chat", body, TIMEOUT.chat, 1);
+      m.chat_ms = Math.round(performance.now() - tc);
     } catch (err) {
-      filler.cancel();
       bubble.remove();
       failedText = text;
-      m.error = err.type || "ERROR";
-      pushMetric(m);
+      m.error = err.type || "ERROR"; pushMetric(m);
       if (err.type === "API_LIMIT") { cooldown(15); return; }
       el.retry.hidden = false;
       setState("idle", "ส่งไม่สำเร็จ ตรวจสอบอินเทอร์เน็ต แล้วแตะ \"ส่งประโยคเดิมอีกครั้ง\" หรือพูดใหม่", true);
       return;
     }
-    m.chat_ms = Math.round(performance.now() - tc);     // combined path: includes the voice
-    if (myTurn !== turnSeq) { filler.cancel(); bubble.remove(); return; }
+    if (myTurn !== turnSeq) { bubble.remove(); return; }
 
     failedText = "";
     const reply = data.customer_reply || "ขอโทษนะ ช่วยพูดอีกทีได้ไหม";
     lines.push("พนักงาน: " + text, "ลูกค้า: " + reply);
     turns++;
+    const tChat = performance.now() - t0;
 
     // Text only / device voice: reveal right away
     if (voiceMode !== "ai") {
       revealReply(bubble, reply);
-      if (voiceMode === "device") { setState("speaking"); speakDevice(reply, myTurn); }
-      else setState("idle");
+      if (voiceMode === "device") {
+        setState("speaking");
+        speakDevice(reply, myTurn);
+      } else setState("idle");
       m.reply_shown_ms = Math.round(performance.now() - t0);
       pushMetric(m);
       return;
     }
 
-    // Item 6 (experimental): stream the voice, play as chunks arrive
-    if (m.path === "stream") {
-      await waitFiller(filler);
-      if (myTurn !== turnSeq) return;
-      revealReply(bubble, reply, "loading");
-      setState("speaking", "กำลังโหลดเสียงลูกค้า…");
-      const ts = performance.now();
-      try {
-        await streamPlay(reply, bubble, myTurn, () => {
-          m.tts_ms = Math.round(performance.now() - ts);     // time to first audio chunk
-          m.reply_audio_ms = Math.round(performance.now() - t0);
-          m.tts_ok = true;
-          pushMetric(m);
-        });
-        return;
-      } catch (err) {
-        if (myTurn !== turnSeq) return;
-        m.stream_error = err.type || "STREAM_ERROR";        // fall back to the normal voice below
-        streamFails++;
-      }
-    }
-
-    // Separate / combined / stream fallback: get the whole audio, then reveal + play together
+    // AI voice: keep the typing bubble until audio is ready (max REVEAL_WAIT_MS)
     const t1 = performance.now();
-    let revealed = bubble.classList.contains("typing") === false;
-    const timer = revealed ? null : setTimeout(() => {
+    const ttsPromise = preUrl ? Promise.resolve(preUrl) : fetchTtsWithRetry(reply);
+    let revealed = false;
+    const timer = setTimeout(() => {
       if (myTurn !== turnSeq || revealed) return;
       revealed = true;
       revealReply(bubble, reply, "loading");
       setState("speaking", "กำลังโหลดเสียงลูกค้า…");
     }, REVEAL_WAIT_MS);
 
-    if (!url) {
-      try { url = await fetchTtsWithRetry(reply); } catch { url = null; }
-      m.tts_ms = Math.round(performance.now() - t1);
-      m.tts_ok = !!url;
-    }
+    let url = null;
+    try { url = await ttsPromise; } catch { url = null; }
     clearTimeout(timer);
-    await waitFiller(filler);   // never talk over the filler
     if (myTurn !== turnSeq) {
       // The staff moved on (tapped the mic) while the voice was loading:
       // keep the audio for replay and clear the loading icon.
@@ -995,33 +969,32 @@
     if (!revealed) revealReply(bubble, reply);
     revealed = true;
 
+    m.tts_ms = preUrl ? 0 : Math.round(performance.now() - t1);
+    m.tts_ok = !!url;
     if (url) {
       bubble._audioUrl = url;
       setState("speaking");
-      playUrl(url, bubble, myTurn, () => {
-        m.reply_audio_ms = Math.round(performance.now() - t0);
-        pushMetric(m);
-      });
+      playUrl(url, bubble, myTurn);
+      m.reply_audio_ms = Math.round(performance.now() - t0);
     } else {
       markVoiceFailed(bubble);
       setState("idle", "เสียงลูกค้ายังไม่พร้อม แตะ \"ฟังเสียง\" ที่ข้อความลูกค้าเพื่อลองอีกครั้ง", true);
-      pushMetric(m);
     }
+    pushMetric(m);
   }
 
-  // Phase 0: keep per-turn timings; shown with ?debug=1, saved with the evaluation
   function pushMetric(m) {
-    if (m._pushed) return;
-    m._pushed = true;
-    const first = [m.filler_ms, m.reply_audio_ms, m.reply_shown_ms].filter((x) => typeof x === "number");
-    m.first_sound_ms = first.length ? Math.min(...first) : null;
-    const rec = Object.assign({}, m); delete rec._pushed;
-    metrics.push(rec);
+    metrics.push(m);
     const sec = (x) => (typeof x === "number" ? (x / 1000).toFixed(1) + " วิ" : "-");
-    const msg = "[" + rec.path + "] ฟังเสียงพูด " + sec(rec.stt_ms) + " | แชท " + sec(rec.chat_ms) +
-      " | เสียง " + sec(rec.tts_ms) + " | เสียงแรก " + sec(rec.first_sound_ms) + " | คำตอบ " + sec(rec.reply_audio_ms || rec.reply_shown_ms);
-    console.log("[latency]", rec);
+    const msg = "[" + m.path + "] แชท " + sec(m.chat_ms) + " | เสียง " + sec(m.tts_ms) + " | ได้ยินคำตอบ " + sec(m.reply_audio_ms || m.reply_shown_ms);
+    console.log("[latency]", m);
     if (DEBUG) setStatus(msg);
+  }
+
+  function micTrace(ev) {
+    micLog.push(Math.round(performance.now()) + ":" + ev);
+    if (micLog.length > 12) micLog.shift();
+    if (DEBUG) setStatus("ไมค์: " + micLog.slice(-4).join(" › "));
   }
 
   function revealReply(bubble, reply, mode) {
@@ -1081,8 +1054,6 @@
   const player = new Audio();
   player.preload = "auto";
   player.setAttribute("playsinline", "");
-  let onPlaying = null;          // one-shot callback for the next "playing" event (timings)
-  player.addEventListener("playing", () => { const f = onPlaying; onPlaying = null; if (f) f(); });
   let audioUnlocked = false;
   let playingBubble = null;
   let audioUrls = [];
@@ -1101,7 +1072,9 @@
     try {
       player.src = SILENT_URL;
       const p = player.play();
-      if (p && p.then) p.then(() => { if (player.src === SILENT_URL) player.pause(); }).catch(() => { audioUnlocked = false; });
+      // AbortError = we paused it ourselves; the element is still unlocked
+      if (p && p.then) p.then(() => { if (player.src === SILENT_URL) player.pause(); })
+        .catch((e) => { if (!e || e.name !== "AbortError") audioUnlocked = false; });
     } catch { audioUnlocked = false; }
   }
 
@@ -1141,8 +1114,7 @@
     return pcmBase64ToWavUrl(part.inlineData.data, m ? Number(m[1]) : 24000);
   }
 
-  /* ---------- Item 2: text + voice in one request ---------- */
-  // Response: line 1 = reply JSON, rest = Gemini TTS JSON or {"error"}.
+  // One request: line 1 = reply JSON, rest = voice (or {"error"}). url null = use fetchTts.
   async function chatVoice(body, timeoutMs) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -1154,7 +1126,6 @@
         signal: ctrl.signal,
       });
       const raw = await res.text();
-      clearTimeout(timer);
       if (!res.ok) {
         let d = null; try { d = JSON.parse(raw); } catch {}
         const err = new Error((d && d.error) || "HTTP " + res.status);
@@ -1165,166 +1136,11 @@
       const cut = raw.indexOf("\n");
       const data = JSON.parse(cut < 0 ? raw : raw.slice(0, cut));
       let url = null;
-      try { const t = JSON.parse(raw.slice(cut + 1)); if (!t.error) url = audioUrlFromGemini(t); } catch {}
-      return { data, url };   // url null = voice failed: caller falls back to the normal tts call
+      if (cut >= 0) { try { const t = JSON.parse(raw.slice(cut + 1)); if (!t.error) url = audioUrlFromGemini(t); } catch {} }
+      return { data, url };
     } finally {
       clearTimeout(timer);
     }
-  }
-
-  /* ---------- Item 6 (experimental): streaming voice ---------- */
-  // Plays PCM chunks as they arrive (Web Audio). On iPhone, Web Audio is muted by
-  // the silent switch unless the browser supports navigator.audioSession, so this
-  // stays behind a flag until it has been tested on real devices.
-  let streamCtx = null, streamSources = [], streamAbort = null;
-  async function streamPlay(text, bubble, myTurn, onFirstAudio) {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC || !window.ReadableStream) throw Object.assign(new Error("no stream support"), { type: "UNSUPPORTED" });
-    if (!streamCtx) streamCtx = new AC();
-    if (streamCtx.state === "suspended") await streamCtx.resume().catch(() => {});
-    if (navigator.audioSession) { try { navigator.audioSession.type = "playback"; } catch {} }
-
-    streamAbort = new AbortController();
-    const timer = setTimeout(() => streamAbort && streamAbort.abort(), TIMEOUT.tts);
-    const res = await fetch(WEBHOOK_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "tts_stream", text, personaId }),
-      signal: streamAbort.signal,
-    });
-    if (!res.ok || !res.body) {
-      clearTimeout(timer);
-      throw Object.assign(new Error("HTTP " + res.status), { type: res.status === 429 ? "API_LIMIT" : "STREAM_ERROR" });
-    }
-    const reader = res.body.getReader();
-    const dec = new TextDecoder();
-    let buf = "", nextAt = 0, started = false, rate = 24000, carry = null;
-    const pcmParts = [];
-    const playChunk = (b64, mime) => {
-      const mm = /rate=(\d+)/.exec(mime || ""); if (mm) rate = Number(mm[1]);
-      const bin = atob(b64);
-      let bytes = new Uint8Array(bin.length + (carry ? 1 : 0)), o = 0;
-      if (carry !== null) { bytes[0] = carry; o = 1; carry = null; }
-      for (let i = 0; i < bin.length; i++) bytes[o + i] = bin.charCodeAt(i);
-      if (bytes.length % 2) { carry = bytes[bytes.length - 1]; bytes = bytes.slice(0, -1); }
-      if (!bytes.length) return;
-      pcmParts.push(bytes);
-      const samples = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.length / 2);
-      const ab = streamCtx.createBuffer(1, samples.length, rate);
-      const ch = ab.getChannelData(0);
-      for (let i = 0; i < samples.length; i++) ch[i] = samples[i] / 32768;
-      const src = streamCtx.createBufferSource();
-      src.buffer = ab; src.connect(streamCtx.destination);
-      const at = Math.max(nextAt, streamCtx.currentTime + 0.06);
-      src.start(at); nextAt = at + ab.duration;
-      streamSources.push(src);
-      if (!started) {
-        started = true;
-        setReplayIcon(bubble, "playing");
-        if (state === "speaking") setStatus("ลูกค้ากำลังพูด");
-        onFirstAudio && onFirstAudio();
-      }
-    };
-    try {
-      for (;;) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        if (myTurn !== turnSeq) { streamAbort.abort(); return; }
-        buf += dec.decode(value, { stream: true });
-        const events = buf.split(/\r?\n\r?\n/);
-        buf = events.pop();
-        for (const ev of events) {
-          const line = ev.split(/\r?\n/).filter((l) => l.startsWith("data:")).map((l) => l.slice(5).trim()).join("");
-          if (!line) continue;
-          let j; try { j = JSON.parse(line); } catch { continue; }
-          if (j.error) throw Object.assign(new Error(j.error.message || "stream error"), { type: "STREAM_ERROR" });
-          const parts = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];
-          parts.forEach((p) => { if (p.inlineData && p.inlineData.data) playChunk(p.inlineData.data, p.inlineData.mimeType); });
-        }
-      }
-    } finally {
-      clearTimeout(timer);
-    }
-    if (!started) throw Object.assign(new Error("no audio in stream"), { type: "STREAM_ERROR" });
-    // keep a normal copy for free replay
-    const total = pcmParts.reduce((n, b) => n + b.length, 0);
-    const all = new Uint8Array(total); let off = 0;
-    pcmParts.forEach((b) => { all.set(b, off); off += b.length; });
-    const url = URL.createObjectURL(makeWav(new Int16Array(all.buffer), rate));
-    audioUrls.push(url);
-    bubble._audioUrl = url;
-    const left = Math.max(0, (nextAt - streamCtx.currentTime) * 1000);
-    setTimeout(() => {
-      if (myTurn !== turnSeq) return;
-      setReplayIcon(bubble, "idle");
-      if (state === "speaking") setState("idle");
-    }, left + 80);
-  }
-
-  function stopStream() {
-    if (streamAbort) { try { streamAbort.abort(); } catch {} streamAbort = null; }
-    streamSources.forEach((s) => { try { s.stop(); } catch {} });
-    streamSources = [];
-  }
-
-  /* ---------- Phase 1: filler sounds ---------- */
-  // Files are generated once with tools/generate_fillers.py and hosted with the page.
-  let fillerManifest = null, fillerUrls = [], lastFiller = -1, fillerResolve = null;
-  async function loadFillerManifest() {
-    if (!FEATURES.fillers) return;
-    try {
-      const r = await fetch(FILLER_BASE + "manifest.json", { cache: "no-cache" });
-      fillerManifest = r.ok ? await r.json() : {};   // {} = no static files, use the Worker
-    } catch { fillerManifest = {}; }
-  }
-  async function preloadFillers(pid) {
-    fillerUrls.forEach((u) => URL.revokeObjectURL(u));
-    fillerUrls = []; lastFiller = -1;
-    if (!FEATURES.fillers || voiceMode !== "ai") return;
-    if (!fillerManifest) await loadFillerManifest();
-    const list = fillerManifest && fillerManifest[pid];
-    if (Array.isArray(list)) {
-      const urls = await Promise.all(list.map(async (f) => {
-        try { const r = await fetch(FILLER_BASE + f); return r.ok ? URL.createObjectURL(await r.blob()) : null; } catch { return null; }
-      }));
-      if (pid === personaId) fillerUrls = urls.filter(Boolean);
-      return;
-    }
-    // No static files: the Worker creates each filler once (shared by everyone via KV).
-    // One at a time, in the background, so the exam never waits for it.
-    for (let n = 1; n <= FILLER_COUNT; n++) {
-      if (pid !== personaId) return;
-      try {
-        const d = await api("filler", { personaId: pid, n }, 15000, 0);
-        if (pid !== personaId || !d.data) continue;
-        fillerUrls.push(pcmBase64ToWavUrl(d.data, d.rate || 24000));
-      } catch (e) {
-        if (e.status === 400 || e.status === 404) return;   // older Worker: no fillers, no problem
-      }
-    }
-  }
-  function scheduleFiller(myTurn, t0, m) {
-    let resolveDone; const done = new Promise((r) => { resolveDone = r; });
-    if (!FEATURES.fillers || !fillerUrls.length || Math.random() > FILLER_PROBABILITY) { resolveDone(); return { done, cancel() {} }; }
-    const timer = setTimeout(() => {
-      if (myTurn !== turnSeq || state !== "thinking") { resolveDone(); return; }
-      let i = Math.floor(Math.random() * fillerUrls.length);
-      if (fillerUrls.length > 1 && i === lastFiller) i = (i + 1) % fillerUrls.length;
-      lastFiller = i;
-      m.filler = true;
-      stopAudio();
-      fillerResolve = resolveDone;
-      const fin = () => { if (fillerResolve === resolveDone) fillerResolve = null; resolveDone(); };
-      player.onended = fin; player.onerror = fin;
-      onPlaying = () => { m.filler_ms = Math.round(performance.now() - t0); };
-      player.src = fillerUrls[i];
-      const p = player.play();
-      if (p && p.catch) p.catch(fin);
-    }, FILLER_DELAY_MS);
-    return { done, cancel() { clearTimeout(timer); if (fillerResolve === resolveDone) stopAudio(); resolveDone(); } };
-  }
-  function waitFiller(filler) {
-    return Promise.race([filler.done, new Promise((r) => setTimeout(r, 2500))]);
   }
 
   async function fetchTtsWithRetry(text) {
@@ -1335,9 +1151,8 @@
     }
   }
 
-  function playUrl(url, bubble, myTurn, onStart) {
+  function playUrl(url, bubble, myTurn) {
     stopAudio();
-    onPlaying = onStart || null;
     playingBubble = bubble || null;
     if (bubble) setReplayIcon(bubble, "playing");
     const done = () => {
@@ -1375,9 +1190,6 @@
   }
 
   function stopAudio() {
-    stopStream();
-    if (fillerResolve) { const r = fillerResolve; fillerResolve = null; r(); }
-    onPlaying = null;
     try { player.pause(); } catch {}
     player.onended = null; player.onerror = null;
     if (playingBubble) { setReplayIcon(playingBubble, "idle"); playingBubble = null; }
@@ -1469,7 +1281,13 @@
         staffName: el.staffName.value.trim(),
         history: lines.join("\n"),
         latency: metrics,
-        device: deviceInfo(),
+        device: {
+          version: APP_VERSION,
+          platform: isIOS ? "ios" : isAndroid ? "android" : "desktop",
+          net: (navigator.connection && navigator.connection.effectiveType) || null,
+          variant: "combined:" + (COMBINED_REQUEST && !combinedUnsupported ? 1 : 0) + ",auto:" + (el.autoSend.checked ? 1 : 0),
+          mic: micLog.slice(-6).join(" "),
+        },
       }, TIMEOUT.evaluate, 1);
       renderResult(data);
       show("result");
@@ -1587,20 +1405,6 @@
       api("start", {}, TIMEOUT.start).catch(() => {});
       if (!el.session.hidden) requestWakeLock();
     }
-  }
-
-  function deviceInfo() {
-    const ua = navigator.userAgent;
-    const c = navigator.connection || {};
-    return {
-      platform: isIOS ? "ios" : isAndroid ? "android" : "desktop",
-      browser: /CriOS|Chrome/.test(ua) ? "chrome" : /Safari/.test(ua) ? "safari" : /Edg/.test(ua) ? "edge" : "other",
-      net: c.effectiveType || null,
-      screen: Math.round(window.innerWidth) + "x" + Math.round(window.innerHeight),
-      version: APP_VERSION,
-      variant: ["fillers:" + (FEATURES.fillers && fillerUrls.length ? 1 : 0), "combined:" + (FEATURES.combinedRequest ? 1 : 0),
-        "stream:" + (FEATURES.streamTts ? 1 : 0), "auto:" + (el.autoSend.checked ? 1 : 0)].join(","),
-    };
   }
 
   function debug(tChat, tVoice, source) {
