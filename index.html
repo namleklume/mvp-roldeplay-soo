@@ -265,6 +265,9 @@
     .live::-webkit-scrollbar { display: none; }
     .live:empty { display: none; }
     .live strong { color: var(--label); font-weight: 500; }
+    .live .meter { display: inline-flex; align-items: center; gap: 3px; height: 26px; margin-right: 10px; vertical-align: middle; }
+    .live .meter i { display: block; width: 4px; border-radius: 2px; background: var(--red); transition: height .1s linear; }
+    .msg.staff.pending { color: var(--label-2); font-style: italic; }
     .status { min-height: 20px; font-size: 14px; color: var(--label-2); text-align: center; }
     .status.error { color: var(--red); }
     .row { display: flex; gap: 10px; }
@@ -425,7 +428,7 @@
 
       <div class="start-bar">
         <button class="btn-primary" id="startBtn" type="button">เริ่มสอบ</button>
-        <p class="version-tag" id="versionTag">เวอร์ชัน 2.6</p>
+        <p class="version-tag" id="versionTag">เวอร์ชัน 2.7</p>
       </div>
     </div>
   </section>
@@ -535,12 +538,13 @@
   const TIMEOUT = { start: 8000, chat: 12000, tts: 20000, evaluate: 30000 };
   const CHAT_HISTORY_LINES = 8;
   const DEBUG = new URLSearchParams(location.search).has("debug");
-  const APP_VERSION = "2.6";
+  const APP_VERSION = "2.7";
   const QS = new URLSearchParams(location.search);
   // Text + voice in one request (network only, never touches the mic).
   // Falls back to chat + tts automatically if the Worker is older. Off: ?combined=0
   const COMBINED_REQUEST = QS.get("combined") !== "0";
   const AUTO_SEND_SILENCE_MS = 2000;
+  const MAX_RECORD_MS = 60000;
 
   /* ===================== Elements ===================== */
   const $ = (id) => document.getElementById(id);
@@ -580,6 +584,7 @@
   let metrics = [];              // per-turn timings, sent with the evaluation
   let tapAt = 0, lastAuto = false;
   let combinedUnsupported = false;
+  let failedAudio = null;        // recorder mode: the clip to resend
   let micLog = [];               // ?debug=1: what the microphone did
 
   const VOICE_MODES = [
@@ -595,8 +600,14 @@
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   const isAndroid = /Android/i.test(navigator.userAgent);
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const isInApp = /Line\/|FBAN|FBAV|Instagram|MicroMessenger/i.test(navigator.userAgent);
+  const canRecord = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) && !!(window.AudioContext || window.webkitAudioContext);
+  // iPhone's built-in speech-to-text often stops returning words after the page has
+  // played audio, so on iPhone (and browsers without it) we record and Gemini listens.
+  // Override for testing: ?rec=1 (force recording) / ?rec=0 (force built-in).
+  const USE_RECORDER = canRecord && (QS.get("rec") === "1" || (QS.get("rec") !== "0" && (isIOS || !SR)));
 
-  if (!SR) {
+  if (!SR && !USE_RECORDER) {
     el.notice.hidden = false;
     el.notice.textContent = isIOS
       ? "เบราว์เซอร์นี้ยังใช้ไมค์กับระบบนี้ไม่ได้ กรุณาเปิดด้วย Safari (iOS 14.5 ขึ้นไป) หรือ Chrome"
@@ -616,7 +627,10 @@
   el.startBtn.addEventListener("click", startSession);
   el.mic.addEventListener("click", onMicTap);
   el.end.addEventListener("click", askEnd);
-  el.retry.addEventListener("click", () => { if (failedText) sendChat(failedText, true); });
+  el.retry.addEventListener("click", () => {
+    if (failedAudio) sendVoice(failedAudio, true);
+    else if (failedText) sendChat(failedText, true);
+  });
   el.again.addEventListener("click", () => startSession());
   el.home.addEventListener("click", () => show("setup"));
   el.voiceBtn.addEventListener("click", cycleVoice);
@@ -641,10 +655,11 @@
       el.notice.textContent = "กรอกรหัสพนักงานและชื่อ-นามสกุลก่อนเริ่มสอบ";
       return;
     }
-    if (!SR) { el.notice.hidden = false; return; }
+    if (!SR && !USE_RECORDER) { el.notice.hidden = false; return; }
     if (el.remember.checked) { store.set("staffId", id); store.set("staffName", name); }
     else { store.del("staffId"); store.del("staffName"); }
-    if (SR) el.notice.hidden = true;
+    el.notice.hidden = true;
+    if (USE_RECORDER) primeRecorder();   // audio engine must be created inside this tap (iPhone)
 
     stopAudio();
     unlockAudio();        // must happen inside this tap (iOS); never on the mic tap
@@ -735,6 +750,11 @@
     e.preventDefault();
     // No audio playback here: starting media in the same tap as the mic can
     // block speech capture on phones.
+    if (USE_RECORDER) {
+      if (state === "listening") stopRecording(false);
+      else if (state === "idle" || state === "speaking") startRecording();
+      return;
+    }
     if (state === "listening") stopListening();
     else if (state === "idle" || state === "speaking") startListening();
   }
@@ -965,8 +985,58 @@
     const reply = data.customer_reply || "ขอโทษนะ ช่วยพูดอีกทีได้ไหม";
     lines.push("พนักงาน: " + text, "ลูกค้า: " + reply);
     turns++;
-    const tChat = performance.now() - t0;
+    await deliverReply(bubble, reply, preUrl, m, myTurn, t0);
+  }
 
+  /* ---------- recorder mode turn (iPhone): audio in, transcript + reply out ---------- */
+  async function sendVoice(b64, isRetry) {
+    const myTurn = ++turnSeq;
+    const t0 = !isRetry && tapAt ? tapAt : performance.now();
+    const m = { turn: turns + 1, mode: voiceMode, path: "voice", auto: !isRetry && lastAuto, stt_ms: null };
+    tapAt = 0;
+    el.retry.hidden = true;
+    const staffBubble = addMessage("staff", "กำลังแปลงเสียง…");
+    staffBubble.classList.add("pending");
+    setState("thinking", "กำลังฟังสิ่งที่คุณพูด…");
+    const bubble = addTyping();
+    const tc = performance.now();
+    let r;
+    try {
+      r = await voiceTurn({
+        sessionId, personaId, audio: b64, mime: "audio/wav",
+        history: lines.slice(-CHAT_HISTORY_LINES).join("\n"),
+      }, TIMEOUT.chat + TIMEOUT.tts + 8000);
+      m.chat_ms = Math.round(performance.now() - tc);
+    } catch (err) {
+      bubble.remove(); staffBubble.remove();
+      failedAudio = b64;
+      m.error = err.type || "ERROR"; pushMetric(m);
+      if (err.status === 400 && /Invalid action/i.test(err.message)) {
+        setState("idle", "กรุณาอัปเดต worker.js บน Cloudflare เพื่อใช้ไมค์บน iPhone", true);
+        return;
+      }
+      if (err.type === "API_LIMIT") { cooldown(15); return; }
+      el.retry.hidden = false;
+      setState("idle", "ส่งไม่สำเร็จ ตรวจสอบอินเทอร์เน็ต แล้วแตะ \"ส่งประโยคเดิมอีกครั้ง\" หรือพูดใหม่", true);
+      return;
+    }
+    if (myTurn !== turnSeq) { bubble.remove(); staffBubble.remove(); return; }
+    failedAudio = null;
+    const said = (r.data.staff_text || "").trim();
+    if (!said) {
+      bubble.remove(); staffBubble.remove();
+      setState("idle", "ไม่ได้ยินคำพูด แตะปุ่มแล้วพูดใหม่อีกครั้ง (พูดใกล้ไมค์ขึ้นอีกนิด)", true);
+      return;
+    }
+    staffBubble.classList.remove("pending");
+    staffBubble.textContent = said;
+    const reply = r.data.customer_reply || "ขอโทษนะ ช่วยพูดอีกทีได้ไหม";
+    lines.push("พนักงาน: " + said, "ลูกค้า: " + reply);
+    turns++;
+    await deliverReply(bubble, reply, r.url, m, myTurn, t0);
+  }
+
+  async function deliverReply(bubble, reply, preUrl, m, myTurn, t0) {
     // Text only / device voice: reveal right away
     if (voiceMode !== "ai") {
       revealReply(bubble, reply);
@@ -1158,7 +1228,7 @@
       const res = await fetch(WEBHOOK_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(Object.assign({ action: "chat_voice" }, body)),
+        body: JSON.stringify(Object.assign({ action: "chat_voice" }, body)),   // body.action overrides
         signal: ctrl.signal,
       });
       const raw = await res.text();
@@ -1231,6 +1301,163 @@
     if (playingBubble) { setReplayIcon(playingBubble, "idle"); playingBubble = null; }
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
   }
+
+  /* ===================== Recorder mode (iPhone) ===================== */
+  // Standard microphone API (same one video-call sites use) + Web Audio, encoded
+  // as 16 kHz mono WAV and sent to the Worker, where Gemini transcribes it.
+  let recCtx = null, recStream = null, recSource = null, recProc = null, recSink = null;
+  let recChunks = [], recRate = 48000, recStartAt = 0, recTick = null;
+  let heardVoice = false, lastLoudAt = 0, recLevel = 0, recStarting = false;
+  const VOICE_RMS = 0.02;   // above this = someone is speaking
+
+  function primeRecorder() {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!recCtx) recCtx = new AC();
+    if (recCtx.state === "suspended") recCtx.resume().catch(() => {});
+  }
+
+  async function startRecording() {
+    if (recStarting) return;
+    recStarting = true;
+    primeRecorder();          // synchronous part of the tap
+    stopAudio();
+    releaseAudioForMic();
+    turnSeq++;
+    el.retry.hidden = true;
+    setStatus("กำลังเปิดไมค์…");
+    try {
+      recStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
+      });
+    } catch (e) {
+      recStarting = false;
+      micTrace("gum:" + (e && e.name));
+      const denied = e && (e.name === "NotAllowedError" || e.name === "SecurityError");
+      setState("idle", denied
+        ? (isInApp ? "แอปนี้ไม่อนุญาตให้ใช้ไมค์ กรุณาเปิดลิงก์นี้ใน Safari (แตะ ⋮ แล้วเลือกเปิดในเบราว์เซอร์)" : "กรุณาอนุญาตให้เว็บไซต์ใช้ไมโครโฟน แล้วลองอีกครั้ง")
+        : e && e.name === "NotFoundError" ? "ไม่พบไมโครโฟนในอุปกรณ์นี้" : "เปิดไมค์ไม่สำเร็จ แตะปุ่มอีกครั้ง", true);
+      return;
+    }
+    try {
+      if (recCtx.state === "suspended") await recCtx.resume();
+      recRate = recCtx.sampleRate;
+      recSource = recCtx.createMediaStreamSource(recStream);
+      recProc = recCtx.createScriptProcessor(4096, 1, 1);
+      recSink = recCtx.createGain(); recSink.gain.value = 0;   // keeps the processor running, silently
+      recChunks = []; heardVoice = false; lastLoudAt = 0; recLevel = 0;
+      recProc.onaudioprocess = (ev) => {
+        const d = ev.inputBuffer.getChannelData(0);
+        recChunks.push(new Float32Array(d));
+        let sum = 0; for (let i = 0; i < d.length; i++) sum += d[i] * d[i];
+        const rms = Math.sqrt(sum / d.length);
+        recLevel = rms;
+        const now = performance.now();
+        if (rms > VOICE_RMS) { if (!heardVoice) micTrace("voice"); heardVoice = true; lastLoudAt = now; }
+        if (el.autoSend.checked && heardVoice && now - lastLoudAt > AUTO_SEND_SILENCE_MS && state === "listening") stopRecording(true);
+      };
+      recSource.connect(recProc); recProc.connect(recSink); recSink.connect(recCtx.destination);
+    } catch (e) {
+      recStarting = false;
+      micTrace("rec-setup:" + (e && e.name));
+      cancelRecording();
+      setState("idle", "เปิดไมค์ไม่สำเร็จ แตะปุ่มอีกครั้ง", true);
+      return;
+    }
+    recStarting = false;
+    micTrace("rec");
+    recStartAt = performance.now();
+    vibrate([40, 60, 40]);
+    setState("listening", el.autoSend.checked ? "กำลังฟัง… หยุดพูดแล้วระบบจะส่งให้เอง" : "กำลังฟัง… พูดจบแล้วแตะปุ่มอีกครั้ง");
+    renderMeter();
+    clearInterval(recTick);
+    recTick = setInterval(() => {
+      if (state !== "listening") return;
+      renderMeter();
+      if (performance.now() - recStartAt > MAX_RECORD_MS) stopRecording(false);
+    }, 120);
+  }
+
+  function renderMeter() {
+    const secs = Math.floor((performance.now() - recStartAt) / 1000);
+    const lvl = Math.min(1, recLevel / 0.12);
+    el.live.textContent = "";
+    const meter = document.createElement("span");
+    meter.className = "meter";
+    for (let i = 0; i < 7; i++) {
+      const b = document.createElement("i");
+      const shape = [0.45, 0.7, 0.9, 1, 0.9, 0.7, 0.45][i];
+      b.style.height = Math.max(4, Math.round(22 * lvl * shape + 4 * Math.random())) + "px";
+      meter.appendChild(b);
+    }
+    const t = document.createElement("span");
+    t.textContent = (heardVoice ? "ได้ยินเสียงแล้ว " : "พูดได้เลย ") + Math.floor(secs / 60) + ":" + String(secs % 60).padStart(2, "0");
+    el.live.append(meter, t);
+  }
+
+  function teardownRecorder() {
+    clearInterval(recTick);
+    try { recProc && (recProc.onaudioprocess = null); } catch {}
+    try { recSource && recSource.disconnect(); } catch {}
+    try { recProc && recProc.disconnect(); } catch {}
+    try { recSink && recSink.disconnect(); } catch {}
+    try { recStream && recStream.getTracks().forEach((t) => t.stop()); } catch {}   // mic off between sentences
+    recSource = recProc = recSink = recStream = null;
+  }
+
+  function cancelRecording() { teardownRecorder(); recChunks = []; el.live.textContent = ""; }
+
+  function stopRecording(auto) {
+    if (state !== "listening") return;
+    lastAuto = auto === true;
+    tapAt = performance.now();
+    vibrate(40);
+    const chunks = recChunks; recChunks = [];
+    const rate = recRate, heard = heardVoice;
+    const durMs = performance.now() - recStartAt;
+    teardownRecorder();
+    el.live.textContent = "";
+    micTrace("stop:" + Math.round(durMs) + "ms" + (heard ? "" : ":quiet"));
+    if (!heard || durMs < 500) {
+      setState("idle", "ไม่ได้ยินเสียง แตะปุ่มแล้วพูดใหม่อีกครั้ง (พูดใกล้ไมค์ขึ้นอีกนิด)", true);
+      return;
+    }
+    sendVoice(encodeWav16k(chunks, rate));
+  }
+
+  function encodeWav16k(chunks, rate) {
+    let n = 0; chunks.forEach((c) => { n += c.length; });
+    const input = new Float32Array(n); let off = 0;
+    chunks.forEach((c) => { input.set(c, off); off += c.length; });
+    const outRate = 16000, ratio = rate / outRate;
+    const outLen = Math.floor(input.length / ratio);
+    const pcm = new Int16Array(outLen);
+    for (let i = 0; i < outLen; i++) {
+      // average the source samples that fall into this output sample (simple low-pass)
+      const a = Math.floor(i * ratio), b = Math.min(input.length, Math.floor((i + 1) * ratio));
+      let sum = 0; for (let j = a; j < b; j++) sum += input[j];
+      const v = Math.max(-1, Math.min(1, sum / Math.max(1, b - a)));
+      pcm[i] = v < 0 ? v * 32768 : v * 32767;
+    }
+    const bytes = new Uint8Array(makeWavBuffer(pcm, outRate));
+    let bin = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(bin);
+  }
+
+  function makeWavBuffer(samples, sampleRate) {
+    const buf = new ArrayBuffer(44 + samples.length * 2);
+    const v = new DataView(buf);
+    const w = (o, str) => { for (let i = 0; i < str.length; i++) v.setUint8(o + i, str.charCodeAt(i)); };
+    w(0, "RIFF"); v.setUint32(4, 36 + samples.length * 2, true); w(8, "WAVE");
+    w(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, sampleRate, true); v.setUint32(28, sampleRate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+    w(36, "data"); v.setUint32(40, samples.length * 2, true);
+    new Int16Array(buf, 44).set(samples);
+    return buf;
+  }
+
+  function voiceTurn(body, timeoutMs) { return chatVoice(Object.assign({}, body, { action: "voice_turn" }), timeoutMs); }
 
   function releaseAudioForMic() {
     try {
@@ -1332,7 +1559,7 @@
           platform: isIOS ? "ios" : isAndroid ? "android" : "desktop",
           net: (navigator.connection && navigator.connection.effectiveType) || null,
           variant: "combined:" + (COMBINED_REQUEST && !combinedUnsupported ? 1 : 0) + ",auto:" + (el.autoSend.checked ? 1 : 0),
-          mic: micLog.slice(-6).join(" "),
+          mic: (USE_RECORDER ? "rec " : "sr ") + micLog.slice(-6).join(" "),
         },
       }, TIMEOUT.evaluate, 1);
       renderResult(data);
@@ -1443,7 +1670,11 @@
 
   function onVisibility() {
     if (document.visibilityState === "hidden") {
-      if (state === "listening") { userStopped = true; try { rec.abort(); } catch {} setState("idle", "หยุดฟังเพราะสลับหน้าจอ แตะเพื่อพูดใหม่"); }
+      if (state === "listening") {
+        if (USE_RECORDER) cancelRecording();
+        else { userStopped = true; try { rec.abort(); } catch {} }
+        setState("idle", "หยุดฟังเพราะสลับหน้าจอ แตะเพื่อพูดใหม่");
+      }
       stopAudio();
       if (state === "speaking") setState("idle");
       wakeLock = null;
