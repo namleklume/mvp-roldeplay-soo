@@ -430,7 +430,7 @@
 
       <div class="start-bar">
         <button class="btn-primary" id="startBtn" type="button">เริ่มสอบ</button>
-        <p class="version-tag" id="versionTag">เวอร์ชัน 2.9</p>
+        <p class="version-tag" id="versionTag">เวอร์ชัน 3.0</p>
       </div>
     </div>
   </section>
@@ -540,7 +540,7 @@
   const TIMEOUT = { start: 8000, chat: 12000, tts: 20000, evaluate: 30000 };
   const CHAT_HISTORY_LINES = 8;
   const DEBUG = new URLSearchParams(location.search).has("debug");
-  const APP_VERSION = "2.9";
+  const APP_VERSION = "3.0";
   const QS = new URLSearchParams(location.search);
   // Text + voice in one request (network only, never touches the mic).
   // Falls back to chat + tts automatically if the Worker is older. Off: ?combined=0
@@ -598,6 +598,8 @@
   let voiceMode = store.get("voiceMode", "ai");
   const REVEAL_WAIT_MS = 7000;   // hold the reply text until its voice is ready (max)
   const TTS_RETRY_DELAY_MS = 1200;
+  const TTS_COOLDOWN_MS = 20000;   // after a quota error, pause automatic voice requests for 20 s
+  let ttsCooldownUntil = 0;
 
   /* ===================== Browser support ===================== */
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -955,10 +957,10 @@
     setState("thinking");
     const bubble = addTyping();
 
-    const body = { sessionId, personaId, message: text, history: lines.slice(-CHAT_HISTORY_LINES).join("\n") };
+    const body = { sessionId, personaId, message: text, history: lines.slice(-CHAT_HISTORY_LINES).join("\n"), no_voice: Date.now() < ttsCooldownUntil };
     const useCombined = voiceMode === "ai" && COMBINED_REQUEST && !combinedUnsupported;
     m.path = voiceMode !== "ai" ? "text" : useCombined ? "combined" : "separate";
-    let data, preUrl = null;
+    let data, preUrl = null, preErr = null;
     const tc = performance.now();
     try {
       let r = null;
@@ -977,7 +979,7 @@
           m.path = "separate";
         }
       }
-      if (r) { data = r.data; preUrl = r.url; }
+      if (r) { data = r.data; preUrl = r.url; preErr = r.voiceError; }
       else data = await api("chat", body, TIMEOUT.chat, 1);
       m.chat_ms = Math.round(performance.now() - tc);
     } catch (err) {
@@ -995,7 +997,7 @@
     const reply = data.customer_reply || "ขอโทษนะ ช่วยพูดอีกทีได้ไหม";
     lines.push("พนักงาน: " + text, "ลูกค้า: " + reply);
     turns++;
-    await deliverReply(bubble, reply, preUrl, m, myTurn, t0);
+    await deliverReply(bubble, reply, preUrl, m, myTurn, t0, preErr);
   }
 
   /* ---------- recorder mode turn (iPhone): audio in, transcript + reply out ---------- */
@@ -1015,6 +1017,7 @@
       r = await voiceTurn({
         sessionId, personaId, audio: b64, mime: "audio/wav",
         history: lines.slice(-CHAT_HISTORY_LINES).join("\n"),
+        no_voice: Date.now() < ttsCooldownUntil,
       }, TIMEOUT.chat + TIMEOUT.tts + 8000, (head) => {
         if (myTurn !== turnSeq) return;
         m.head_ms = Math.round(performance.now() - t0);   // transcript + reply text ready
@@ -1054,7 +1057,7 @@
     const reply = r.data.customer_reply || "ขอโทษนะ ช่วยพูดอีกทีได้ไหม";
     lines.push("พนักงาน: " + said, "ลูกค้า: " + reply);
     turns++;
-    await deliverReply(bubble, reply, r.url, m, myTurn, t0);
+    await deliverReply(bubble, reply, r.url, m, myTurn, t0, r.voiceError);
   }
 
   // If the voice is not ready shortly after the text, show the text with a loading
@@ -1069,7 +1072,7 @@
     }, EARLY_REVEAL_MS);
   }
 
-  async function deliverReply(bubble, reply, preUrl, m, myTurn, t0) {
+  async function deliverReply(bubble, reply, preUrl, m, myTurn, t0, preErr) {
     // Text only / device voice: reveal right away
     if (voiceMode !== "ai") {
       revealReply(bubble, reply);
@@ -1084,7 +1087,26 @@
 
     // AI voice: keep the typing bubble until audio is ready (max REVEAL_WAIT_MS)
     const t1 = performance.now();
-    const ttsPromise = preUrl ? Promise.resolve(preUrl) : fetchTtsWithRetry(reply);
+    let ttsPromise;
+    if (preUrl) ttsPromise = Promise.resolve(preUrl);
+    else if (preErr && preErr.type === "COOLDOWN") {
+      m.voice_error = "COOLDOWN";
+      ttsPromise = Promise.resolve(null);
+    } else if (preErr && preErr.type === "API_LIMIT") {
+      // Quota is full right now: asking again immediately only keeps it full longer.
+      ttsCooldownUntil = Date.now() + TTS_COOLDOWN_MS;
+      m.voice_error = "API_LIMIT"; m.voice_error_msg = preErr.msg.slice(0, 120);
+      ttsPromise = Promise.resolve(null);
+    } else if (Date.now() < ttsCooldownUntil) {
+      m.voice_error = "COOLDOWN";
+      ttsPromise = Promise.resolve(null);
+    } else {
+      if (preErr) { m.voice_error_first = preErr.type; }
+      ttsPromise = fetchTtsWithRetry(reply).catch((e) => {
+        m.voice_error = e.type || "TTS_ERROR"; m.voice_error_msg = String(e.message || "").slice(0, 120);
+        return null;
+      });
+    }
     let revealed = !bubble.classList.contains("typing");   // may already be shown early
     const timer = setTimeout(() => {
       if (myTurn !== turnSeq || revealed) return;
@@ -1112,26 +1134,50 @@
     m.tts_ok = !!url;
     if (url) {
       bubble._audioUrl = url;
+      m.trim_lead_ms = trimByUrl.get(url);
       setState("speaking");
-      playUrl(url, bubble, myTurn);
+      playUrl(url, bubble, myTurn, (errName) => {   // phone refused to start playback
+        m.voice_error = "PLAY:" + errName;
+        showDebug(m);
+      });
       m.reply_audio_ms = Math.round(performance.now() - t0);
     } else {
       markVoiceFailed(bubble);
-      setState("idle", "เสียงลูกค้ายังไม่พร้อม แตะ \"ฟังเสียง\" ที่ข้อความลูกค้าเพื่อลองอีกครั้ง", true);
+      const quota = m.voice_error === "API_LIMIT" || m.voice_error === "COOLDOWN";
+      setState("idle", quota
+        ? "เสียงลูกค้าใช้โควตาเต็มชั่วคราว อ่านข้อความไปก่อนได้ แล้วแตะ \"ฟังเสียง\" ภายหลัง"
+        : "โหลดเสียงลูกค้าไม่สำเร็จ แตะ \"ฟังเสียง\" ที่ข้อความลูกค้าเพื่อลองอีกครั้ง", true);
     }
     pushMetric(m);
   }
 
   function pushMetric(m) {
     metrics.push(m);
+    showDebug(m);
+  }
+
+  function voiceErrorText(m) {
+    const e = m.voice_error || "";
+    if (e === "API_LIMIT") return /day|daily|perday/i.test(m.voice_error_msg || "") ? "โควตาเสียงรายวันเต็ม" : "โควตาเสียงต่อนาทีเต็ม";
+    if (e === "COOLDOWN") return "พักขอเสียง 20 วิ หลังโควตาเต็ม";
+    if (e.startsWith("PLAY:")) return "เครื่องไม่ยอมเล่นเสียงอัตโนมัติ (" + e.slice(5) + ")";
+    if (e === "NETWORK" || e === "HTTP_ERROR") return "เน็ตหลุดระหว่างโหลดเสียง";
+    if (e) return "Gemini ไม่ส่งเสียงกลับ (" + e + ")";
+    return "";
+  }
+
+  function showDebug(m) {
     const sec = (x) => (typeof x === "number" ? (x / 1000).toFixed(1) + " วิ" : "-");
-    m.trim_lead_ms = lastLeadTrimMs;
+    const voiceErr = voiceErrorText(m);
+    const tail = voiceErr ? " | เสียงล้มเหลว: " + voiceErr
+      : m.trim_lead_ms != null ? " | ตัดเงียบต้นเสียง " + sec(m.trim_lead_ms) : "";
     const msg = m.head_ms != null
-      ? "[" + m.path + "] ข้อความ " + sec(m.head_ms) + (m.llm_ms != null ? " (AI " + sec(m.llm_ms) + ")" : "") + " | เสียงมาเพิ่ม " + sec(m.reply_audio_ms != null ? m.reply_audio_ms - m.head_ms : null) + " | ได้ยินคำตอบ " + sec(m.reply_audio_ms) + " | ตัดเงียบต้นเสียง " + sec(m.trim_lead_ms)
-      : "[" + m.path + "] แชท " + sec(m.chat_ms) + " | เสียง " + sec(m.tts_ms) + " | ได้ยินคำตอบ " + sec(m.reply_audio_ms || m.reply_shown_ms);
+      ? "[" + m.path + "] ข้อความ " + sec(m.head_ms) + (m.llm_ms != null ? " (AI " + sec(m.llm_ms) + ")" : "") + " | เสียงมาเพิ่ม " + sec(m.reply_audio_ms != null ? m.reply_audio_ms - m.head_ms : null) + " | ได้ยินคำตอบ " + sec(m.reply_audio_ms) + tail
+      : "[" + m.path + "] แชท " + sec(m.chat_ms) + " | เสียง " + sec(m.tts_ms) + " | ได้ยินคำตอบ " + sec(m.reply_audio_ms || m.reply_shown_ms) + tail;
     console.log("[latency]", m);
     if (DEBUG) setStatus(msg);
   }
+
 
   function micTrace(ev) {
     micLog.push(Math.round(performance.now()) + ":" + ev);
@@ -1243,8 +1289,10 @@
     lastLeadTrimMs = trimLeadMs;
     const url = URL.createObjectURL(makeWav(samples, sampleRate));
     audioUrls.push(url);
+    trimByUrl.set(url, trimLeadMs);
     return url;
   }
+  const trimByUrl = new Map();   // silence cut from each clip (shown with ?debug=1)
 
   // Gemini TTS clips often start (and end) with silence: playback "starts" but the
   // first word comes ~0.5–1 s later. Cut it so the voice begins the moment it plays.
@@ -1335,8 +1383,19 @@
         if (onHead) { try { onHead(data); } catch {} }
       }
       let url = null;
-      if (rest.trim()) { try { const t = JSON.parse(rest); if (!t.error) url = audioUrlFromGemini(t); } catch {} }
-      return { data, url };
+      let voiceError = null;
+      if (rest.trim()) {
+        try {
+          const t = JSON.parse(rest);
+          if (t.error) voiceError = { type: t.type || "TTS_ERROR", msg: String(t.error) };
+          else url = audioUrlFromGemini(t);
+        } catch (e) { voiceError = { type: "TTS_ERROR", msg: "no audio in response" }; }
+      } else if (body.no_voice) {
+        voiceError = { type: "COOLDOWN", msg: "voice paused after quota error" };
+      } else if (data && data.customer_reply) {
+        voiceError = { type: "NETWORK", msg: "voice part did not arrive" };
+      }
+      return { data, url, voiceError };
     } finally {
       clearTimeout(timer);
     }
@@ -1346,12 +1405,13 @@
   async function fetchTtsWithRetry(text) {
     try { return await fetchTts(text); }
     catch (err) {
-      await new Promise((r) => setTimeout(r, err.type === "API_LIMIT" ? 2500 : TTS_RETRY_DELAY_MS));
+      if (err.type === "API_LIMIT") { ttsCooldownUntil = Date.now() + TTS_COOLDOWN_MS; throw err; }
+      await new Promise((r) => setTimeout(r, TTS_RETRY_DELAY_MS));
       return await fetchTts(text); // same voice, second try; never a different voice
     }
   }
 
-  function playUrl(url, bubble, myTurn) {
+  function playUrl(url, bubble, myTurn, onRefused) {
     stopAudio();
     playingBubble = bubble || null;
     if (bubble) setReplayIcon(bubble, "playing");
@@ -1364,12 +1424,26 @@
     player.onerror = done;
     player.src = url;
     const p = player.play();
-    if (p && p.catch) p.catch(() => {
-      // Autoplay blocked (rare): let the user start it with one tap
+    if (p && p.catch) p.catch((e) => {
+      const name = (e && e.name) || "Error";
+      if (name === "AbortError") return;            // we stopped it ourselves (e.g. mic tapped)
+      // Phone refused to start sound without a fresh tap: play on the next tap anywhere
       if (bubble) markVoiceFailed(bubble);
-      if (state === "speaking" && myTurn === turnSeq) setState("idle", "แตะ \"ฟังเสียง\" ที่ข้อความลูกค้าเพื่อเปิดเสียง");
+      pendingPlay = { url, bubble, myTurn };
+      if (onRefused) onRefused(name);
+      if (state === "speaking" && myTurn === turnSeq) setState("idle", "แตะที่หน้าจอ 1 ครั้งเพื่อฟังเสียงลูกค้า");
     });
   }
+
+  let pendingPlay = null;
+  document.addEventListener("pointerdown", (ev) => {
+    if (!pendingPlay) return;
+    const pp = pendingPlay; pendingPlay = null;
+    if (ev.target.closest && ev.target.closest("#micBtn, #endBtn, .replay")) return;   // those buttons have their own action
+    if (pp.myTurn !== turnSeq || !pp.bubble.isConnected) return;
+    setState("speaking");
+    playUrl(pp.url, pp.bubble, pp.myTurn);
+  }, true);
 
   function speakDevice(text, myTurn) {
     const gender = (persona && persona.gender) || "female";
