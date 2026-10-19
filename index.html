@@ -166,6 +166,18 @@
     }
     .btn-secondary:active { background: rgba(118,118,128,.2); }
 
+    .diag-box { padding: 14px 16px; }
+    .diag-help { margin: 0 0 10px; font-size: 14px; color: var(--label-2); line-height: 1.5; }
+    .diag-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .diag-actions .btn-secondary { width: auto; flex: 1; min-height: 44px; font-size: 15px; padding: 0 12px; }
+    .diag-out { margin-top: 12px; overflow-x: auto; }
+    .diag-out table { border-collapse: collapse; width: 100%; font-size: 13px; }
+    .diag-out th, .diag-out td { text-align: left; padding: 7px 6px; vertical-align: top; box-shadow: inset 0 calc(var(--hair) * -1) 0 var(--sep); }
+    .diag-out th { color: var(--label-2); font-weight: 600; white-space: nowrap; }
+    .diag-out td.m { font-family: ui-monospace, Menlo, monospace; font-size: 12px; word-break: break-all; }
+    .diag-out .ok { color: var(--green); font-weight: 700; }
+    .diag-out .bad { color: var(--red); font-weight: 700; }
+    .diag-out .fix { color: var(--label); }
     .version-tag { margin: 8px 0 0; text-align: center; font-size: 13px; color: var(--label-2); }
     .notice {
       border-radius: var(--r-cell);
@@ -397,6 +409,18 @@
 
       <div class="notice" id="browserNotice" hidden></div>
 
+      <div id="diagPanel" hidden>
+        <div class="group-title">ตรวจการตั้งค่า (สำหรับผู้ดูแล)</div>
+        <div class="group diag-box">
+          <p class="diag-help">ทดสอบทุกโมเดลใน CHAT_MODELS, EVAL_MODELS และทุก API key ด้วยคำขอสั้นมาก (ค่าใช้จ่ายแทบเป็นศูนย์) การตรวจเสียงจะใช้โควตาเสียง 1 ครั้งต่อโมเดล</p>
+          <div class="diag-actions">
+            <button class="btn-secondary" id="diagTextBtn" type="button">ตรวจโมเดลข้อความ + key</button>
+            <button class="btn-secondary" id="diagAllBtn" type="button">ตรวจรวมโมเดลเสียง</button>
+          </div>
+          <div id="diagOut" class="diag-out"></div>
+        </div>
+      </div>
+
       <div class="group-title">ข้อมูลพนักงาน</div>
       <div class="group">
         <label class="cell">
@@ -430,7 +454,7 @@
 
       <div class="start-bar">
         <button class="btn-primary" id="startBtn" type="button">เริ่มสอบ</button>
-        <p class="version-tag" id="versionTag">เวอร์ชัน 3.1</p>
+        <p class="version-tag" id="versionTag">เวอร์ชัน 3.2</p>
       </div>
     </div>
   </section>
@@ -540,7 +564,7 @@
   const TIMEOUT = { start: 8000, chat: 12000, tts: 20000, evaluate: 30000 };
   const CHAT_HISTORY_LINES = 8;
   const DEBUG = new URLSearchParams(location.search).has("debug");
-  const APP_VERSION = "3.1";
+  const APP_VERSION = "3.2";
   const QS = new URLSearchParams(location.search);
   // Text + voice in one request (network only, never touches the mic).
   // Falls back to chat + tts automatically if the Worker is older. Off: ?combined=0
@@ -644,6 +668,65 @@
   el.personaToggle.addEventListener("click", () => setPersonaOpen(!el.personaCard.classList.contains("open")));
   el.cancelEnd.addEventListener("click", () => closeDialog(false));
   el.confirmEnd.addEventListener("click", () => closeDialog(true));
+
+  /* ===================== Settings check (?diag=1) ===================== */
+  if (QS.has("diag")) {
+    $("diagPanel").hidden = false;
+    $("diagTextBtn").addEventListener("click", () => runDiag(false));
+    $("diagAllBtn").addEventListener("click", () => runDiag(true));
+  }
+
+  function diagAdvice(r) {
+    const n = String(r.note || "");
+    if (r.ok) return "ใช้ได้";
+    if (r.ok === null) return "ยังไม่ได้ตรวจ";
+    if (r.status === 404 || /not found|not supported for|is not available/i.test(n)) return "ชื่อโมเดลไม่ถูกต้อง หรือโมเดลนี้เลิกให้บริการ: แก้ชื่อหรือลบออกจากรายการ";
+    if (/api key|API_KEY/i.test(n)) return "API key นี้ใช้ไม่ได้: ลบออกจาก GEMINI_API_KEYS หรือสร้างใหม่";
+    if (r.status === 403) return "key หรือโปรเจกต์ไม่มีสิทธิ์ใช้โมเดลนี้ (เช่น ยังไม่ผูก billing)";
+    if (r.status === 429) return "ชนโควตาอยู่ตอนนี้ (ชื่อถูกต้อง) ลองใหม่ภายหลัง";
+    if (r.status === 400) return "Gemini ปฏิเสธคำขอ: ดูรายละเอียดในคอลัมน์ข้อความ";
+    return "ตรวจไม่ผ่าน: ดูรายละเอียดในคอลัมน์ข้อความ";
+  }
+
+  async function runDiag(withTts) {
+    const out = $("diagOut");
+    out.textContent = withTts ? "กำลังตรวจทุกโมเดล รวมเสียง… (ประมาณ 10–40 วินาที)" : "กำลังตรวจโมเดลข้อความและ key… (ประมาณ 5–20 วินาที)";
+    try {
+      const d = await api("diagnose", { tts: withTts }, 90000, 0);
+      const t = document.createElement("table");
+      t.innerHTML = "<thead><tr><th></th><th>ตัวแปร</th><th>โมเดล</th><th>key</th><th>ผล / วิธีแก้</th><th>ข้อความจาก Gemini</th></tr></thead>";
+      const tb = document.createElement("tbody");
+      (d.rows || []).forEach((r) => {
+        const tr = document.createElement("tr");
+        const cells = [
+          r.ok ? "✅" : r.ok === null ? "–" : "❌",
+          r.group, r.model, r.key,
+          diagAdvice(r) + (r.ok ? " (" + r.ms + " ms)" : ""),
+          r.ok ? (r.note || "") : "HTTP " + r.status + " " + (r.note || ""),
+        ];
+        cells.forEach((c, i) => {
+          const td = document.createElement("td");
+          td.textContent = c;
+          if (i === 0) td.className = r.ok ? "ok" : r.ok === null ? "" : "bad";
+          if (i === 2 || i === 5) td.className = "m";
+          if (i === 4) td.className = "fix";
+          tr.appendChild(td);
+        });
+        tb.appendChild(tr);
+      });
+      t.appendChild(tb);
+      out.textContent = "";
+      const sum = document.createElement("p");
+      const bad = (d.rows || []).filter((r) => r.ok === false).length;
+      sum.className = "diag-help";
+      sum.textContent = "จำนวน API key: " + d.keys + " | ไม่ผ่าน " + bad + " รายการ" + (bad ? " (แก้ตามคอลัมน์ \"ผล / วิธีแก้\" แล้วตรวจใหม่)" : " ทุกอย่างพร้อมใช้งาน");
+      out.append(sum, t);
+    } catch (e) {
+      out.textContent = e.status === 400 && /Invalid action/i.test(e.message)
+        ? "Worker ยังเป็นเวอร์ชันเก่า: วาง worker.js ใหม่แล้ว Deploy ก่อน"
+        : "ตรวจไม่สำเร็จ: " + (e.message || e);
+    }
+  }
 
   /* ===================== Screens ===================== */
   function show(name) {
@@ -990,7 +1073,7 @@
       m.error = err.type || "ERROR"; pushMetric(m);
       if (err.type === "API_LIMIT") { cooldown(15); return; }
       el.retry.hidden = false;
-      setState("idle", "ส่งไม่สำเร็จ ตรวจสอบอินเทอร์เน็ต แล้วแตะ \"ส่งประโยคเดิมอีกครั้ง\" หรือพูดใหม่", true);
+      setState("idle", sendErrorText(err), true);
       return;
     }
     if (myTurn !== turnSeq) { bubble.remove(); return; }
@@ -1044,7 +1127,7 @@
       }
       if (err.type === "API_LIMIT") { cooldown(15); return; }
       el.retry.hidden = false;
-      setState("idle", "ส่งไม่สำเร็จ ตรวจสอบอินเทอร์เน็ต แล้วแตะ \"ส่งประโยคเดิมอีกครั้ง\" หรือพูดใหม่", true);
+      setState("idle", sendErrorText(err), true);
       return;
     }
     if (myTurn !== turnSeq) { bubble.remove(); staffBubble.remove(); return; }
@@ -1154,6 +1237,16 @@
         : "โหลดเสียงลูกค้าไม่สำเร็จ แตะ \"ฟังเสียง\" ที่ข้อความลูกค้าเพื่อลองอีกครั้ง", true);
     }
     pushMetric(m);
+  }
+
+  // What went wrong, in words the staff (and the admin) can act on.
+  function sendErrorText(err) {
+    if (err && err.type === "GEMINI_ERROR") {
+      if (DEBUG) console.error("[AI error]", err.message);
+      return "ระบบ AI ตอบไม่สำเร็จ (การตั้งค่าโมเดล) ผู้ดูแลตรวจได้ที่ลิงก์ ?diag=1" + (DEBUG ? " | " + String(err.message).slice(0, 160) : "");
+    }
+    if (err && (err.status === 500 || err.type === "CONFIG_ERROR")) return "ระบบหลังบ้านตั้งค่าไม่ครบ ผู้ดูแลตรวจได้ที่ลิงก์ ?diag=1";
+    return "ส่งไม่สำเร็จ ตรวจสอบอินเทอร์เน็ต แล้วแตะ \"ส่งประโยคเดิมอีกครั้ง\" หรือพูดใหม่";
   }
 
   function pushMetric(m) {
