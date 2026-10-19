@@ -430,7 +430,7 @@
 
       <div class="start-bar">
         <button class="btn-primary" id="startBtn" type="button">เริ่มสอบ</button>
-        <p class="version-tag" id="versionTag">เวอร์ชัน 3.0</p>
+        <p class="version-tag" id="versionTag">เวอร์ชัน 3.1</p>
       </div>
     </div>
   </section>
@@ -540,7 +540,7 @@
   const TIMEOUT = { start: 8000, chat: 12000, tts: 20000, evaluate: 30000 };
   const CHAT_HISTORY_LINES = 8;
   const DEBUG = new URLSearchParams(location.search).has("debug");
-  const APP_VERSION = "3.0";
+  const APP_VERSION = "3.1";
   const QS = new URLSearchParams(location.search);
   // Text + voice in one request (network only, never touches the mic).
   // Falls back to chat + tts automatically if the Worker is older. Off: ?combined=0
@@ -588,6 +588,8 @@
   let tapAt = 0, lastAuto = false;
   let combinedUnsupported = false;
   let failedAudio = null;        // recorder mode: the clip to resend
+  let examTtsModel = null;       // voice model this exam uses; asked for first so the tone stays the same
+  let lastTtsModel = null;
   let micLog = [];               // ?debug=1: what the microphone did
 
   const VOICE_MODES = [
@@ -671,7 +673,7 @@
     requestWakeLock();
 
     sessionId = (crypto.randomUUID ? crypto.randomUUID() : "SES-" + Date.now());
-    lines = []; turns = 0; failedText = ""; turnSeq++; metrics = [];
+    lines = []; turns = 0; failedText = ""; turnSeq++; metrics = []; examTtsModel = null;
     releaseAudioUrls();
     setPersonaOpen(true);
     el.chat.textContent = "";
@@ -957,10 +959,10 @@
     setState("thinking");
     const bubble = addTyping();
 
-    const body = { sessionId, personaId, message: text, history: lines.slice(-CHAT_HISTORY_LINES).join("\n"), no_voice: Date.now() < ttsCooldownUntil };
+    const body = { sessionId, personaId, message: text, history: lines.slice(-CHAT_HISTORY_LINES).join("\n"), no_voice: Date.now() < ttsCooldownUntil, tts_prefer: examTtsModel };
     const useCombined = voiceMode === "ai" && COMBINED_REQUEST && !combinedUnsupported;
     m.path = voiceMode !== "ai" ? "text" : useCombined ? "combined" : "separate";
-    let data, preUrl = null, preErr = null;
+    let data, preUrl = null, preErr = null, preModel = null;
     const tc = performance.now();
     try {
       let r = null;
@@ -979,7 +981,7 @@
           m.path = "separate";
         }
       }
-      if (r) { data = r.data; preUrl = r.url; preErr = r.voiceError; }
+      if (r) { data = r.data; preUrl = r.url; preErr = r.voiceError; preModel = r.ttsModel; }
       else data = await api("chat", body, TIMEOUT.chat, 1);
       m.chat_ms = Math.round(performance.now() - tc);
     } catch (err) {
@@ -997,7 +999,7 @@
     const reply = data.customer_reply || "ขอโทษนะ ช่วยพูดอีกทีได้ไหม";
     lines.push("พนักงาน: " + text, "ลูกค้า: " + reply);
     turns++;
-    await deliverReply(bubble, reply, preUrl, m, myTurn, t0, preErr);
+    await deliverReply(bubble, reply, preUrl, m, myTurn, t0, preErr, preModel);
   }
 
   /* ---------- recorder mode turn (iPhone): audio in, transcript + reply out ---------- */
@@ -1018,6 +1020,7 @@
         sessionId, personaId, audio: b64, mime: "audio/wav",
         history: lines.slice(-CHAT_HISTORY_LINES).join("\n"),
         no_voice: Date.now() < ttsCooldownUntil,
+        tts_prefer: examTtsModel,
       }, TIMEOUT.chat + TIMEOUT.tts + 8000, (head) => {
         if (myTurn !== turnSeq) return;
         m.head_ms = Math.round(performance.now() - t0);   // transcript + reply text ready
@@ -1057,7 +1060,7 @@
     const reply = r.data.customer_reply || "ขอโทษนะ ช่วยพูดอีกทีได้ไหม";
     lines.push("พนักงาน: " + said, "ลูกค้า: " + reply);
     turns++;
-    await deliverReply(bubble, reply, r.url, m, myTurn, t0, r.voiceError);
+    await deliverReply(bubble, reply, r.url, m, myTurn, t0, r.voiceError, r.ttsModel);
   }
 
   // If the voice is not ready shortly after the text, show the text with a loading
@@ -1072,7 +1075,7 @@
     }, EARLY_REVEAL_MS);
   }
 
-  async function deliverReply(bubble, reply, preUrl, m, myTurn, t0, preErr) {
+  async function deliverReply(bubble, reply, preUrl, m, myTurn, t0, preErr, preModel) {
     // Text only / device voice: reveal right away
     if (voiceMode !== "ai") {
       revealReply(bubble, reply);
@@ -1135,6 +1138,8 @@
     if (url) {
       bubble._audioUrl = url;
       m.trim_lead_ms = trimByUrl.get(url);
+      const used = preUrl ? preModel : lastTtsModel;
+      if (used) { m.tts_model = used; examTtsModel = used; }   // stay on this model for the rest of the exam
       setState("speaking");
       playUrl(url, bubble, myTurn, (errName) => {   // phone refused to start playback
         m.voice_error = "PLAY:" + errName;
@@ -1169,8 +1174,9 @@
   function showDebug(m) {
     const sec = (x) => (typeof x === "number" ? (x / 1000).toFixed(1) + " วิ" : "-");
     const voiceErr = voiceErrorText(m);
+    const short = (x) => String(x).replace(/^gemini-/, "").replace(/-preview-tts$|-tts$/, "");
     const tail = voiceErr ? " | เสียงล้มเหลว: " + voiceErr
-      : m.trim_lead_ms != null ? " | ตัดเงียบต้นเสียง " + sec(m.trim_lead_ms) : "";
+      : (m.trim_lead_ms != null ? " | ตัดเงียบต้นเสียง " + sec(m.trim_lead_ms) : "") + (m.tts_model ? " | เสียงจาก " + short(m.tts_model) : "");
     const msg = m.head_ms != null
       ? "[" + m.path + "] ข้อความ " + sec(m.head_ms) + (m.llm_ms != null ? " (AI " + sec(m.llm_ms) + ")" : "") + " | เสียงมาเพิ่ม " + sec(m.reply_audio_ms != null ? m.reply_audio_ms - m.head_ms : null) + " | ได้ยินคำตอบ " + sec(m.reply_audio_ms) + tail
       : "[" + m.path + "] แชท " + sec(m.chat_ms) + " | เสียง " + sec(m.tts_ms) + " | ได้ยินคำตอบ " + sec(m.reply_audio_ms || m.reply_shown_ms) + tail;
@@ -1322,8 +1328,32 @@
 
 
   async function fetchTts(text) {
-    const data = await api("tts", { text, personaId }, TIMEOUT.tts, 0);
-    return audioUrlFromGemini(data);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), TIMEOUT.tts);
+    try {
+      const res = await fetch(WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "tts", text, personaId, tts_prefer: examTtsModel }),
+        signal: ctrl.signal,
+      });
+      let data = null;
+      try { data = await res.json(); } catch {}
+      if (!res.ok || !data || data.error) {
+        const err = new Error((data && data.error) || ("HTTP " + res.status));
+        err.type = (data && data.type) || (res.status === 429 ? "API_LIMIT" : "HTTP_ERROR");
+        err.status = res.status;
+        throw err;
+      }
+      const url = audioUrlFromGemini(data);
+      lastTtsModel = res.headers.get("X-TTS-Model") || null;
+      return url;
+    } catch (e) {
+      if (e.name === "AbortError") { const err = new Error("timeout"); err.type = "NETWORK"; throw err; }
+      throw e;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   function audioUrlFromGemini(data) {
@@ -1383,11 +1413,12 @@
         if (onHead) { try { onHead(data); } catch {} }
       }
       let url = null;
-      let voiceError = null;
+      let voiceError = null, ttsModel = null;
       if (rest.trim()) {
         try {
           const t = JSON.parse(rest);
           if (t.error) voiceError = { type: t.type || "TTS_ERROR", msg: String(t.error) };
+          else if (t.data) { url = audioUrlFromGemini(t.data); ttsModel = t.tts_model || null; }
           else url = audioUrlFromGemini(t);
         } catch (e) { voiceError = { type: "TTS_ERROR", msg: "no audio in response" }; }
       } else if (body.no_voice) {
@@ -1395,7 +1426,7 @@
       } else if (data && data.customer_reply) {
         voiceError = { type: "NETWORK", msg: "voice part did not arrive" };
       }
-      return { data, url, voiceError };
+      return { data, url, voiceError, ttsModel };
     } finally {
       clearTimeout(timer);
     }
