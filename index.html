@@ -178,6 +178,23 @@
     .diag-out .ok { color: var(--green); font-weight: 700; }
     .diag-out .bad { color: var(--red); font-weight: 700; }
     .diag-out .fix { color: var(--label); }
+    .howto .cell { gap: 12px; font-size: 16px; }
+    .howto .n { width: 26px; height: 26px; border-radius: 50%; flex: none; display: grid; place-items: center; background: var(--tint); color: var(--accent-text); font-weight: 700; font-size: 14px; }
+    .nw { white-space: nowrap; }
+    .gold-card { margin-top: 8px; }
+    .gold-toggle { width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: transparent; text-align: left; min-height: 44px; }
+    .gold-badge { flex: none; font-size: 13px; font-weight: 700; color: var(--accent-text); background: var(--tint); border-radius: 999px; padding: 2px 10px; }
+    .gold-sum { flex: 1; min-width: 0; font-size: 14px; color: var(--label); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+    .gold-toggle .chev { flex: none; color: #C4C4C7; transition: transform .2s; }
+    .gold-card.open .gold-toggle .chev { transform: rotate(90deg); }
+    .gold-detail { padding: 0 14px 12px; }
+    .gold-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+    .gold-table th { text-align: right; font-weight: 600; color: var(--label-2); padding: 6px 0 4px; font-size: 13px; }
+    .gold-table th:first-child, .gold-table td:first-child { text-align: left; }
+    .gold-table td { text-align: right; padding: 6px 0; box-shadow: inset 0 var(--hair) 0 var(--sep); }
+    .gold-table td:first-child { color: var(--label-2); }
+    .gold-note { margin: 8px 0 0; font-size: 12px; color: var(--label-2); line-height: 1.5; }
+    .price-list { padding: 12px 16px 12px 34px; color: var(--label); font-size: 15px; line-height: 1.6; margin: 0; }
     .version-tag { margin: 8px 0 0; text-align: center; font-size: 13px; color: var(--label-2); }
     .notice {
       border-radius: var(--r-cell);
@@ -338,6 +355,7 @@
     .summary { margin: 0; padding: 12px 16px; }
     .kw { font-size: 14px; color: var(--label-2); margin: 0; padding: 0 16px 12px 34px; }
     .kw:empty { display: none; }
+    .kw.lang { padding: 12px 16px 12px 34px; color: var(--label); font-size: 15px; line-height: 1.6; }
     details summary { cursor: pointer; font-weight: 500; min-height: 50px; display: flex; align-items: center; padding: 0 16px; color: var(--accent-text); list-style: none; }
     details summary::-webkit-details-marker { display: none; }
     details summary::after { content: "›"; margin-left: auto; color: #C4C4C7; font-size: 22px; transition: transform .2s; }
@@ -370,6 +388,8 @@
 
     /* ===== Tablet landscape / desktop ===== */
     @media (min-width: 900px) {
+      .gold-detail { display: block !important; }
+      .gold-toggle .chev { display: none; }
       .session { grid-template-columns: 340px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
       .side { grid-row: 1 / span 2; padding: 16px 0 16px 20px; overflow-y: auto; }
       .persona { pointer-events: none; }
@@ -404,7 +424,7 @@
   <!-- 1. Setup -->
   <section class="screen setup" id="setupScreen">
     <div class="wrap">
-      <h1>สอบมาตรฐาน<wbr>บริการ<wbr>หน้าร้าน</h1>
+      <h1><span class="nw">สอบมาตรฐาน</span><wbr><span class="nw">บริการหน้าร้าน</span></h1>
       <p class="lead">คุยกับลูกค้าจำลองด้วยเสียง เหมือนลูกค้าเดินเข้าร้านจริง แล้วรับผลประเมินตามขั้นตอนการขาย</p>
 
       <div class="notice" id="browserNotice" hidden></div>
@@ -442,19 +462,16 @@
       </div>
       <p class="group-footer">เมื่อเปิด ระบบจะส่งให้เองหลังหยุดพูดประมาณ 2 วินาที ถ้าปิด ให้แตะปุ่มไมค์อีกครั้งเมื่อพูดจบ</p>
 
-      <div class="group-title">ขั้นตอนที่กรรมการจะประเมิน</div>
-      <ol class="group steps">
-        <li>เปิดการขาย ทักทายด้วย "ออโรร่า สวัสดีค่ะ/ครับ"</li>
-        <li>แนะนำสินค้าให้ตรงความต้องการ</li>
-        <li>ย้ำโปรโมชันหรือสิทธิประโยชน์</li>
-        <li>ตอบข้อโต้แย้งของลูกค้า</li>
-        <li>ปิดการขาย</li>
-      </ol>
-      <p class="group-footer">แตะปุ่มไมค์ 1 ครั้งเพื่อเริ่มพูด พูดจบแล้วแตะอีกครั้งเพื่อส่ง ผ่านเกณฑ์เมื่อได้ 4 จาก 5 ขั้นตอน</p>
+      <div class="group-title">วิธีใช้</div>
+      <div class="group howto">
+        <div class="cell"><span class="n">1</span>แตะ "เริ่มสอบ" ระบบจะสุ่มลูกค้าให้ 1 คน</div>
+        <div class="cell"><span class="n">2</span>แตะปุ่มไมค์แล้วพูด พูดจบแตะอีกครั้งเพื่อส่ง</div>
+        <div class="cell"><span class="n">3</span>คุยจนจบการขาย แล้วแตะ "จบและดูผล"</div>
+      </div>
 
       <div class="start-bar">
         <button class="btn-primary" id="startBtn" type="button">เริ่มสอบ</button>
-        <p class="version-tag" id="versionTag">เวอร์ชัน 3.2</p>
+        <p class="version-tag" id="versionTag">เวอร์ชัน 3.4</p>
       </div>
     </div>
   </section>
@@ -478,15 +495,19 @@
           <div class="pd-row"><span class="pd-key">นิสัย</span><span class="pd-val" id="pdPersonality">-</span></div>
         </div>
       </div>
-      <div class="mission-wrap">
-        <div class="group-title">เป้าหมายของรอบนี้</div>
-        <ol class="group steps">
-          <li>เปิดการขาย</li>
-          <li>แนะนำสินค้า</li>
-          <li>ย้ำโปรโมชัน</li>
-          <li>ตอบข้อโต้แย้ง</li>
-          <li>ปิดการขาย</li>
-        </ol>
+      <div class="group gold-card" id="goldCard" hidden>
+        <button class="gold-toggle" id="goldToggle" type="button" aria-expanded="false" aria-controls="goldDetail">
+          <span class="gold-badge">ราคาทอง</span>
+          <span class="gold-sum" id="goldSum"></span>
+          <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
+        <div class="gold-detail" id="goldDetail" hidden>
+          <table class="gold-table">
+            <thead><tr><th>ทองรูปพรรณ</th><th>ขายออก*</th><th>รับซื้อคืน</th></tr></thead>
+            <tbody id="goldRows"></tbody>
+          </table>
+          <p class="gold-note" id="goldNote"></p>
+        </div>
       </div>
     </aside>
 
@@ -517,6 +538,18 @@
 
       <div class="group-title">ผลรายขั้นตอน</div>
       <ul class="group result-steps" id="resultSteps"></ul>
+
+      <div id="priceWrap" hidden>
+        <div class="group-title">ความถูกต้องของราคา</div>
+        <div class="group"><ul class="price-list" id="priceList"></ul></div>
+        <p class="group-footer">ไม่มีผลต่อคะแนน 5 ขั้นตอน ตรวจจากราคาทองที่แสดงระหว่างสอบ</p>
+      </div>
+
+      <div id="langWrap" hidden>
+        <div class="group-title">ข้อควรระวังด้านภาษาและมารยาท</div>
+        <div class="group"><ul class="kw lang" id="langList"></ul></div>
+        <p class="group-footer">ไม่มีผลต่อคะแนน 5 ขั้นตอน แต่ควรปรับก่อนเจอลูกค้าจริง</p>
+      </div>
 
       <div class="group-title">สรุปจากกรรมการ</div>
       <div class="group">
@@ -564,14 +597,15 @@
   const TIMEOUT = { start: 8000, chat: 12000, tts: 20000, evaluate: 30000 };
   const CHAT_HISTORY_LINES = 8;
   const DEBUG = new URLSearchParams(location.search).has("debug");
-  const APP_VERSION = "3.2";
+  const APP_VERSION = "3.4";
   const QS = new URLSearchParams(location.search);
   // Text + voice in one request (network only, never touches the mic).
   // Falls back to chat + tts automatically if the Worker is older. Off: ?combined=0
   const COMBINED_REQUEST = QS.get("combined") !== "0";
   const AUTO_SEND_SILENCE_MS = 2000;
   const MAX_RECORD_MS = 60000;
-  const EARLY_REVEAL_MS = 1200;   // show reply text this long after it arrives if the voice is still coming
+  const EARLY_REVEAL_MS = 1200;
+  const VOICE_WAIT_MS = 6000;     // longest the staff waits for the voice after the text arrives   // show reply text this long after it arrives if the voice is still coming
 
   /* ===================== Elements ===================== */
   const $ = (id) => document.getElementById(id);
@@ -669,6 +703,32 @@
   el.cancelEnd.addEventListener("click", () => closeDialog(false));
   el.confirmEnd.addEventListener("click", () => closeDialog(true));
 
+  /* ===================== Gold price card ===================== */
+  // Same estimated price for every candidate (set by the admin in GOLD_PRICE on the Worker)
+  const GOLD_WEIGHTS = [["1 สลึง", 0.25], ["2 สลึง", 0.5], ["1 บาท", 1], ["2 บาท", 2], ["5 บาท", 5]];
+  const fmt = (n) => Math.round(n).toLocaleString("th-TH");
+  function renderGold(g) {
+    const card = $("goldCard");
+    if (!g || !g.ornament_sell) { card.hidden = true; return; }
+    card.hidden = false;
+    $("goldSum").textContent = "ขาย " + fmt(g.ornament_sell) + " | รับซื้อ " + fmt(g.ornament_buy) + " /บาท";
+    const rows = $("goldRows"); rows.textContent = "";
+    GOLD_WEIGHTS.forEach(([label, w]) => {
+      const tr = document.createElement("tr");
+      [label, fmt(g.ornament_sell * w), fmt(g.ornament_buy * w)].forEach((v) => { const td = document.createElement("td"); td.textContent = v; tr.appendChild(td); });
+      rows.appendChild(tr);
+    });
+    $("goldNote").textContent = "* ยังไม่รวมค่ากำเหน็จ" + (g.making_charge_note ? " (" + g.making_charge_note + ")" : "") +
+      " | ทองคำแท่ง ขายออก " + fmt(g.bar_sell) + " / รับซื้อ " + fmt(g.bar_buy) + " | " + (g.label || "ราคาสำหรับการสอบ");
+  }
+  $("goldToggle").addEventListener("click", () => {
+    const open = $("goldDetail").hidden;
+    $("goldDetail").hidden = !open;
+    $("goldCard").classList.toggle("open", open);
+    $("goldToggle").setAttribute("aria-expanded", String(open));
+    keepChatAtBottom();
+  });
+
   /* ===================== Settings check (?diag=1) ===================== */
   if (QS.has("diag")) {
     $("diagPanel").hidden = false;
@@ -719,7 +779,8 @@
       const sum = document.createElement("p");
       const bad = (d.rows || []).filter((r) => r.ok === false).length;
       sum.className = "diag-help";
-      sum.textContent = "จำนวน API key: " + d.keys + " | ไม่ผ่าน " + bad + " รายการ" + (bad ? " (แก้ตามคอลัมน์ \"ผล / วิธีแก้\" แล้วตรวจใหม่)" : " ทุกอย่างพร้อมใช้งาน");
+      const g = d.gold;
+      sum.textContent = (g ? "ราคาทอง: " + (g.is_example ? "ยังใช้ค่าสมมติ (ตั้ง GOLD_PRICE เพื่อกำหนดเอง) " : g.label + " ") + "รูปพรรณ ขาย " + Math.round(g.ornament_sell).toLocaleString("th-TH") + " / รับซื้อ " + Math.round(g.ornament_buy).toLocaleString("th-TH") + " | " : "") + "จำนวน API key: " + d.keys + " | ไม่ผ่าน " + bad + " รายการ" + (bad ? " (แก้ตามคอลัมน์ \"ผล / วิธีแก้\" แล้วตรวจใหม่)" : " ทุกอย่างพร้อมใช้งาน");
       out.append(sum, t);
     } catch (e) {
       out.textContent = e.status === 400 && /Invalid action/i.test(e.message)
@@ -776,6 +837,7 @@
     try {
       const data = await api("start", { personaId }, TIMEOUT.start);
       persona = data.persona || null;
+      renderGold(data.gold || null);
     } catch { /* card is optional; the exam still works */ }
     renderPersona(persona);
   }
@@ -1054,8 +1116,10 @@
           r = await chatVoice(body, TIMEOUT.chat + TIMEOUT.tts, (head) => {
             if (myTurn !== turnSeq) return;
             m.head_ms = Math.round(performance.now() - t0);
+            if (head.customer_reply) recordTurn(m, text, head.customer_reply);
             setStatus("ลูกค้ากำลังตอบ…");
             scheduleEarlyReveal(bubble, head.customer_reply, myTurn);
+            armVoiceRelease(bubble, head.customer_reply, myTurn, m);
           });
         }
         catch (e) {
@@ -1076,12 +1140,10 @@
       setState("idle", sendErrorText(err), true);
       return;
     }
-    if (myTurn !== turnSeq) { bubble.remove(); return; }
-
     failedText = "";
     const reply = data.customer_reply || "ขอโทษนะ ช่วยพูดอีกทีได้ไหม";
-    lines.push("พนักงาน: " + text, "ลูกค้า: " + reply);
-    turns++;
+    if (myTurn !== turnSeq) { finishLateTurn(bubble, preUrl, m); return; }
+    if (!m.recorded) recordTurn(m, text, reply);
     await deliverReply(bubble, reply, preUrl, m, myTurn, t0, preErr, preModel);
   }
 
@@ -1112,9 +1174,11 @@
         if (!said) return;
         staffBubble.classList.remove("pending");
         staffBubble.textContent = said;
+        if (head.customer_reply) recordTurn(m, said, head.customer_reply);
         keepChatAtBottom();
         setStatus("ลูกค้ากำลังตอบ…");
         scheduleEarlyReveal(bubble, head.customer_reply, myTurn);
+        armVoiceRelease(bubble, head.customer_reply, myTurn, m);
       });
       m.chat_ms = Math.round(performance.now() - tc);
     } catch (err) {
@@ -1130,7 +1194,11 @@
       setState("idle", sendErrorText(err), true);
       return;
     }
-    if (myTurn !== turnSeq) { bubble.remove(); staffBubble.remove(); return; }
+    if (myTurn !== turnSeq) {
+      if (m.recorded) finishLateTurn(bubble, r.url, m);      // staff moved on after the text: keep it
+      else { bubble.remove(); staffBubble.remove(); }
+      return;
+    }
     failedAudio = null;
     const said = (r.data.staff_text || "").trim();
     if (!said) {
@@ -1141,9 +1209,42 @@
     staffBubble.classList.remove("pending");
     staffBubble.textContent = said;
     const reply = r.data.customer_reply || "ขอโทษนะ ช่วยพูดอีกทีได้ไหม";
-    lines.push("พนักงาน: " + said, "ลูกค้า: " + reply);
-    turns++;
+    if (!m.recorded) recordTurn(m, said, reply);
     await deliverReply(bubble, reply, r.url, m, myTurn, t0, r.voiceError, r.ttsModel);
+  }
+
+  // The conversation history is updated as soon as the text arrives (not when the voice
+  // does), so a slow voice never loses a turn.
+  function recordTurn(m, staffText, reply) {
+    if (m.recorded) return;
+    m.recorded = true;
+    lines.push("พนักงาน: " + staffText, "ลูกค้า: " + reply);
+    turns++;
+  }
+
+  // Never make the staff wait long for the customer's voice: after VOICE_WAIT_MS the
+  // text is shown, the mic is free again, and the voice (if it comes) waits behind the
+  // "ฟังเสียง" button instead of interrupting.
+  function armVoiceRelease(bubble, reply, myTurn, m) {
+    if (voiceMode !== "ai" || !reply) return;
+    clearTimeout(bubble._releaseTimer);
+    bubble._releaseTimer = setTimeout(() => {
+      if (myTurn !== turnSeq || !bubble.isConnected || bubble._gotVoice) return;
+      bubble._released = true;
+      m.voice_slow = true;
+      if (bubble.classList.contains("typing")) revealReply(bubble, reply, "loading");
+      setState("idle", "เสียงลูกค้ามาช้ากว่าปกติ คุยต่อได้เลย (เสียงจะพร้อมให้แตะฟังภายหลัง)");
+    }, VOICE_WAIT_MS);
+  }
+
+  // A turn whose voice arrived after the staff already moved on: keep text, attach voice.
+  function finishLateTurn(bubble, url, m) {
+    clearTimeout(bubble._releaseTimer);
+    if (!bubble.isConnected) return;
+    if (bubble.classList.contains("typing")) { bubble.remove(); return; }
+    if (url) { bubble._audioUrl = url; setReplayIcon(bubble, "idle"); } else markVoiceFailed(bubble);
+    m.voice_late = true;
+    pushMetric(m);
   }
 
   // If the voice is not ready shortly after the text, show the text with a loading
@@ -1188,7 +1289,8 @@
       ttsPromise = Promise.resolve(null);
     } else {
       if (preErr) { m.voice_error_first = preErr.type; }
-      ttsPromise = fetchTtsWithRetry(reply).catch((e) => {
+      armVoiceRelease(bubble, reply, myTurn, m);
+      ttsPromise = fetchTtsWithRetry(reply, preErr ? preModel : null).catch((e) => {
         m.voice_error = e.type || "TTS_ERROR"; m.voice_error_msg = String(e.message || "").slice(0, 120);
         return null;
       });
@@ -1218,6 +1320,15 @@
 
     m.tts_ms = preUrl ? 0 : Math.round(performance.now() - t1);
     m.tts_ok = !!url;
+    clearTimeout(bubble._releaseTimer);
+    bubble._gotVoice = true;
+    if (bubble._released) {                      // staff was already let go: no surprise playback
+      if (url) { bubble._audioUrl = url; m.trim_lead_ms = trimByUrl.get(url); setReplayIcon(bubble, "idle"); }
+      else markVoiceFailed(bubble);
+      m.voice_late = true;
+      pushMetric(m);
+      return;
+    }
     if (url) {
       bubble._audioUrl = url;
       m.trim_lead_ms = trimByUrl.get(url);
@@ -1420,14 +1531,14 @@
   }
 
 
-  async function fetchTts(text) {
+  async function fetchTts(text, avoid) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), TIMEOUT.tts);
     try {
       const res = await fetch(WEBHOOK_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "tts", text, personaId, tts_prefer: examTtsModel }),
+        body: JSON.stringify({ action: "tts", text, personaId, tts_prefer: examTtsModel, tts_avoid: avoid || null }),
         signal: ctrl.signal,
       });
       let data = null;
@@ -1438,8 +1549,11 @@
         err.status = res.status;
         throw err;
       }
-      const url = audioUrlFromGemini(data);
-      lastTtsModel = res.headers.get("X-TTS-Model") || null;
+      const served = res.headers.get("X-TTS-Model") || null;
+      let url;
+      try { url = audioUrlFromGemini(data); }
+      catch (e) { e.model = served; throw e; }          // 200 but no audio: report which model
+      lastTtsModel = served;
       return url;
     } catch (e) {
       if (e.name === "AbortError") { const err = new Error("timeout"); err.type = "NETWORK"; throw err; }
@@ -1511,7 +1625,7 @@
         try {
           const t = JSON.parse(rest);
           if (t.error) voiceError = { type: t.type || "TTS_ERROR", msg: String(t.error) };
-          else if (t.data) { url = audioUrlFromGemini(t.data); ttsModel = t.tts_model || null; }
+          else if (t.data) { ttsModel = t.tts_model || null; url = audioUrlFromGemini(t.data); }
           else url = audioUrlFromGemini(t);
         } catch (e) { voiceError = { type: "TTS_ERROR", msg: "no audio in response" }; }
       } else if (body.no_voice) {
@@ -1526,12 +1640,12 @@
   }
 
 
-  async function fetchTtsWithRetry(text) {
-    try { return await fetchTts(text); }
+  async function fetchTtsWithRetry(text, avoid) {
+    try { return await fetchTts(text, avoid); }
     catch (err) {
       if (err.type === "API_LIMIT") { ttsCooldownUntil = Date.now() + TTS_COOLDOWN_MS; throw err; }
       await new Promise((r) => setTimeout(r, TTS_RETRY_DELAY_MS));
-      return await fetchTts(text); // same voice, second try; never a different voice
+      return await fetchTts(text, err.model || avoid); // same voice name; skip the model that just failed
     }
   }
 
@@ -1892,6 +2006,12 @@
     });
 
     el.summary.textContent = d.summary || "ไม่มีสรุปจากกรรมการ";
+    const langList = $("langList"); langList.textContent = "";
+    (d.language_issues || []).forEach((x) => { const li = document.createElement("li"); li.textContent = x; langList.appendChild(li); });
+    $("langWrap").hidden = !(d.language_issues && d.language_issues.length);
+    const priceList = $("priceList"); priceList.textContent = "";
+    (d.price_issues || []).forEach((x) => { const li = document.createElement("li"); li.textContent = x; priceList.appendChild(li); });
+    $("priceWrap").hidden = !(d.price_issues && d.price_issues.length);
     el.keywords.textContent = "";
     (d.keyword_details || []).forEach((k) => {
       const li = document.createElement("li"); li.textContent = k; el.keywords.appendChild(li);
