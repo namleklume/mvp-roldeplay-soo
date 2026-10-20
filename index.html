@@ -495,7 +495,7 @@
 
       <div class="start-bar">
         <button class="btn-primary" id="startBtn" type="button">เริ่มสอบ</button>
-        <p class="version-tag" id="versionTag">เวอร์ชัน 3.6</p>
+        <p class="version-tag" id="versionTag">เวอร์ชัน 3.7</p>
       </div>
     </div>
   </section>
@@ -615,7 +615,7 @@
   const TIMEOUT = { start: 8000, chat: 12000, tts: 20000, evaluate: 30000 };
   const CHAT_HISTORY_LINES = 8;
   const DEBUG = new URLSearchParams(location.search).has("debug");
-  const APP_VERSION = "3.6";
+  const APP_VERSION = "3.7";
   const QS = new URLSearchParams(location.search);
   // Text + voice in one request (network only, never touches the mic).
   // Falls back to chat + tts automatically if the Worker is older. Off: ?combined=0
@@ -623,7 +623,8 @@
   const AUTO_SEND_SILENCE_MS = 2000;
   const MAX_RECORD_MS = 60000;
   const EARLY_REVEAL_MS = 1200;
-  const VOICE_WAIT_MS = 6000;     // longest the staff waits for the voice after the text arrives   // show reply text this long after it arrives if the voice is still coming
+  const VOICE_WAIT_MS = 6000;     // after this the mic is free again (voice may still follow)
+  const LATE_VOICE_MAX_MS = 20000; // a voice later than this after its text is not auto-played   // show reply text this long after it arrives if the voice is still coming
 
   /* ===================== Elements ===================== */
   const $ = (id) => document.getElementById(id);
@@ -1268,13 +1269,16 @@
   // "ฟังเสียง" button instead of interrupting.
   function armVoiceRelease(bubble, reply, myTurn, m) {
     if (voiceMode !== "ai" || !reply) return;
+    if (!bubble._textAt) bubble._textAt = performance.now();
     clearTimeout(bubble._releaseTimer);
     bubble._releaseTimer = setTimeout(() => {
       if (myTurn !== turnSeq || !bubble.isConnected || bubble._gotVoice) return;
       bubble._released = true;
       m.voice_slow = true;
       if (bubble.classList.contains("typing")) revealReply(bubble, reply, "loading");
-      setState("idle", "เสียงลูกค้ามาช้ากว่าปกติ คุยต่อได้เลย (เสียงจะพร้อมให้แตะฟังภายหลัง)");
+      // The mic is free again, but the voice still plays when it arrives,
+      // as long as the staff has not started speaking (see deliverReply).
+      setState("idle", "เสียงลูกค้ากำลังตามมา รอฟังสักครู่ หรือแตะไมค์พูดต่อได้เลย");
     }, VOICE_WAIT_MS);
   }
 
@@ -1363,7 +1367,20 @@
     m.tts_ok = !!url;
     clearTimeout(bubble._releaseTimer);
     bubble._gotVoice = true;
-    if (bubble._released) {                      // staff was already let go: no surprise playback
+    if (bubble._released) {
+      // The mic was freed while waiting. Late voice still plays if the staff has not
+      // started speaking yet (state still "idle" for this turn) and it is not stale.
+      const fresh = bubble._textAt && performance.now() - bubble._textAt < LATE_VOICE_MAX_MS;
+      if (url && myTurn === turnSeq && state === "idle" && fresh) {
+        bubble._audioUrl = url;
+        m.trim_lead_ms = trimByUrl.get(url);
+        m.voice_late_played = true;
+        setState("speaking");
+        playUrl(url, bubble, myTurn, (errName) => { m.voice_error = "PLAY:" + errName; showDebug(m); });
+        m.reply_audio_ms = Math.round(performance.now() - t0);
+        pushMetric(m);
+        return;
+      }
       if (url) { bubble._audioUrl = url; m.trim_lead_ms = trimByUrl.get(url); setReplayIcon(bubble, "idle"); }
       else markVoiceFailed(bubble);
       m.voice_late = true;
