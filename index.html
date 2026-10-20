@@ -6,7 +6,7 @@
   <meta name="color-scheme" content="light only">
   <meta name="theme-color" content="#FFF8F1">
   <meta http-equiv="Cache-Control" content="no-cache">
-  <title>ฝึกขายกับลูกค้า AI | สอบมาตรฐานบริการ</title>
+  <title>ระบบทดสอบมาตรฐานบริการลูกค้า</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -73,7 +73,7 @@
       width: 30px; height: 30px; border-radius: 8px; flex: none;
       background: linear-gradient(145deg, #FFB45C, var(--accent));
     }
-    .brand-text { font-weight: 700; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .brand-text { font-weight: 700; font-size: 17px; line-height: 1.3; min-width: 0; }
     .chip-btn {
       background: var(--tint);
       color: var(--accent-text);
@@ -179,21 +179,35 @@
     .diag-out .bad { color: var(--red); font-weight: 700; }
     .diag-out .fix { color: var(--label); }
     .howto .cell { gap: 12px; font-size: 16px; }
+    .tenure-cell { flex-wrap: wrap; align-items: flex-start; padding-top: 12px; padding-bottom: 12px; }
+    .tenure-cell .cell-label { padding-top: 7px; }
+    .tenure-box { flex: 1; min-width: 220px; }
+    .req { color: var(--red); font-weight: 700; }
+    .tenure-hint { font-size: 13px; font-weight: 600; color: var(--accent-text); margin: 6px 0 6px; display: flex; align-items: center; gap: 6px; }
+    .tenure-hint::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; animation: hintpulse 1.4s infinite; }
+    .tenure-cell.done .tenure-hint { color: var(--green); }
+    .tenure-cell.done .tenure-hint::before { background: var(--green); animation: none; }
+    @keyframes hintpulse { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+    .seg { display: flex; background: var(--fill); border-radius: 10px; padding: 2px; gap: 2px; }
+    .tenure-cell:not(.done) .seg { background: var(--tint); box-shadow: inset 0 0 0 1.5px var(--accent); }
+    .tenure-cell.need .seg { box-shadow: inset 0 0 0 2px var(--red); background: var(--red-tint); animation: shake .35s ease; }
+    .tenure-cell.need .tenure-hint { color: var(--red); }
+    @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+    .seg button { flex: 1; min-height: 38px; border-radius: 8px; background: transparent; font-size: 14px; font-weight: 600; color: var(--label); padding: 4px 6px; line-height: 1.25; }
+    .seg button[aria-checked="true"] { background: var(--surface); color: var(--accent-text); box-shadow: 0 3px 8px rgba(0,0,0,.12), 0 1px 1px rgba(0,0,0,.04); }
+    .level-chip { display: inline-block; font-size: 13px; font-weight: 700; color: var(--accent-text); background: var(--tint); border-radius: 999px; padding: 2px 10px; margin-top: 8px; }
+    .must-tag { display: inline-block; margin-left: 6px; font-size: 11px; font-weight: 700; color: var(--red); background: var(--red-tint); border-radius: 999px; padding: 1px 7px; vertical-align: 2px; }
     .howto .n { width: 26px; height: 26px; border-radius: 50%; flex: none; display: grid; place-items: center; background: var(--tint); color: var(--accent-text); font-weight: 700; font-size: 14px; }
     .nw { white-space: nowrap; }
-    .gold-card { margin-top: 8px; }
-    .gold-toggle { width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: transparent; text-align: left; min-height: 44px; }
-    .gold-badge { flex: none; font-size: 13px; font-weight: 700; color: var(--accent-text); background: var(--tint); border-radius: 999px; padding: 2px 10px; }
-    .gold-sum { flex: 1; min-width: 0; font-size: 14px; color: var(--label); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
-    .gold-toggle .chev { flex: none; color: #C4C4C7; transition: transform .2s; }
-    .gold-card.open .gold-toggle .chev { transform: rotate(90deg); }
-    .gold-detail { padding: 0 14px 12px; }
-    .gold-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
-    .gold-table th { text-align: right; font-weight: 600; color: var(--label-2); padding: 6px 0 4px; font-size: 13px; }
-    .gold-table th:first-child, .gold-table td:first-child { text-align: left; }
-    .gold-table td { text-align: right; padding: 6px 0; box-shadow: inset 0 var(--hair) 0 var(--sep); }
-    .gold-table td:first-child { color: var(--label-2); }
-    .gold-note { margin: 8px 0 0; font-size: 12px; color: var(--label-2); line-height: 1.5; }
+    .gold-card { margin-top: 8px; padding: 10px 14px 12px; }
+    .gold-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .gold-badge { font-size: 13px; font-weight: 700; color: var(--accent-text); background: var(--tint); border-radius: 999px; padding: 2px 10px; }
+    .gold-unit { font-size: 12px; color: var(--label-2); }
+    .gold-prices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .gold-prices > div { display: flex; flex-direction: column; align-items: flex-start; padding: 0 8px; box-shadow: inset var(--hair) 0 0 var(--sep); }
+    .gold-prices > div:first-child { padding-left: 0; box-shadow: none; }
+    .gk { font-size: 12px; color: var(--label-2); }
+    .gv { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
     .price-list { padding: 12px 16px 12px 34px; color: var(--label); font-size: 15px; line-height: 1.6; margin: 0; }
     .version-tag { margin: 8px 0 0; text-align: center; font-size: 13px; color: var(--label-2); }
     .notice {
@@ -388,8 +402,6 @@
 
     /* ===== Tablet landscape / desktop ===== */
     @media (min-width: 900px) {
-      .gold-detail { display: block !important; }
-      .gold-toggle .chev { display: none; }
       .session { grid-template-columns: 340px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
       .side { grid-row: 1 / span 2; padding: 16px 0 16px 20px; overflow-y: auto; }
       .persona { pointer-events: none; }
@@ -406,6 +418,7 @@
       .chat, .controls { padding-left: 24px; padding-right: 24px; }
     }
     @media (prefers-reduced-motion: reduce) {
+      .tenure-hint::before, .tenure-cell.need .seg { animation: none !important; }
       .mic.listening, .dots i, .eq i { animation: none; }
       * { transition: none !important; }
     }
@@ -416,7 +429,7 @@
   <header class="topbar">
     <div class="brand">
       <div class="brand-mark" aria-hidden="true"></div>
-      <div class="brand-text">ฝึกขายกับลูกค้า AI</div>
+      <div class="brand-text"><span class="nw">ระบบทดสอบมาตรฐาน</span><wbr><span class="nw">บริการลูกค้า</span></div>
     </div>
     <button class="chip-btn" id="voiceBtn" type="button" aria-label="เปลี่ยนโหมดเสียง">🔊 เสียง AI</button>
   </header>
@@ -451,6 +464,17 @@
           <span class="cell-label">ชื่อ-นามสกุล</span>
           <input id="staffName" autocomplete="name" enterkeyhint="done" placeholder="ชื่อ นามสกุล">
         </label>
+        <div class="cell tenure-cell" id="tenureCell">
+          <span class="cell-label">อายุงาน <span class="req">*</span></span>
+          <div class="tenure-box">
+          <div class="tenure-hint" id="tenureHint">แตะเลือกอายุงานของคุณ 1 ข้อ</div>
+          <div class="seg" role="radiogroup" aria-label="อายุงาน (จำเป็นต้องเลือก)" aria-describedby="tenureHint" id="levelSeg">
+            <button type="button" role="radio" aria-checked="false" data-level="1">ต่ำกว่า 6 เดือน</button>
+            <button type="button" role="radio" aria-checked="false" data-level="2">6 เดือน–2 ปี</button>
+            <button type="button" role="radio" aria-checked="false" data-level="3">มากกว่า 2 ปี</button>
+          </div>
+          </div>
+        </div>
         <label class="cell">
           <span>จำข้อมูลไว้ในเครื่องนี้</span>
           <input type="checkbox" role="switch" class="switch" id="rememberMe" checked>
@@ -464,14 +488,14 @@
 
       <div class="group-title">วิธีใช้</div>
       <div class="group howto">
-        <div class="cell"><span class="n">1</span>แตะ "เริ่มสอบ" ระบบจะสุ่มลูกค้าให้ 1 คน</div>
+        <div class="cell"><span class="n">1</span>เลือกอายุงาน แล้วแตะ "เริ่มสอบ" ระบบจะเลือกลูกค้าตามระดับให้ 1 คน</div>
         <div class="cell"><span class="n">2</span>แตะปุ่มไมค์แล้วพูด พูดจบแตะอีกครั้งเพื่อส่ง</div>
         <div class="cell"><span class="n">3</span>คุยจนจบการขาย แล้วแตะ "จบและดูผล"</div>
       </div>
 
       <div class="start-bar">
         <button class="btn-primary" id="startBtn" type="button">เริ่มสอบ</button>
-        <p class="version-tag" id="versionTag">เวอร์ชัน 3.4</p>
+        <p class="version-tag" id="versionTag">เวอร์ชัน 3.6</p>
       </div>
     </div>
   </section>
@@ -496,17 +520,11 @@
         </div>
       </div>
       <div class="group gold-card" id="goldCard" hidden>
-        <button class="gold-toggle" id="goldToggle" type="button" aria-expanded="false" aria-controls="goldDetail">
-          <span class="gold-badge">ราคาทอง</span>
-          <span class="gold-sum" id="goldSum"></span>
-          <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
-        </button>
-        <div class="gold-detail" id="goldDetail" hidden>
-          <table class="gold-table">
-            <thead><tr><th>ทองรูปพรรณ</th><th>ขายออก*</th><th>รับซื้อคืน</th></tr></thead>
-            <tbody id="goldRows"></tbody>
-          </table>
-          <p class="gold-note" id="goldNote"></p>
+        <div class="gold-head"><span class="gold-badge">ราคาทอง</span><span class="gold-unit">ต่อทองหนัก 1 บาท</span></div>
+        <div class="gold-prices">
+          <div><span class="gk">ขาย</span><span class="gv" id="gSell">-</span></div>
+          <div><span class="gk">รับซื้อ</span><span class="gv" id="gBuy">-</span></div>
+          <div><span class="gk">ขายฝาก</span><span class="gv" id="gPawn">-</span></div>
         </div>
       </div>
     </aside>
@@ -597,7 +615,7 @@
   const TIMEOUT = { start: 8000, chat: 12000, tts: 20000, evaluate: 30000 };
   const CHAT_HISTORY_LINES = 8;
   const DEBUG = new URLSearchParams(location.search).has("debug");
-  const APP_VERSION = "3.4";
+  const APP_VERSION = "3.6";
   const QS = new URLSearchParams(location.search);
   // Text + voice in one request (network only, never touches the mic).
   // Falls back to chat + tts automatically if the Worker is older. Off: ?combined=0
@@ -647,6 +665,8 @@
   let combinedUnsupported = false;
   let failedAudio = null;        // recorder mode: the clip to resend
   let examTtsModel = null;       // voice model this exam uses; asked for first so the tone stays the same
+  let examLevel = 0;             // 1 / 2 / 3 by tenure (0 = not chosen)
+  let levelLabel = "";
   let lastTtsModel = null;
   let micLog = [];               // ?debug=1: what the microphone did
 
@@ -682,6 +702,19 @@
   /* ===================== Init ===================== */
   el.staffId.value = store.get("staffId", "");
   el.staffName.value = store.get("staffName", "");
+  // Tenure (exam level): remembered on this device with the staff details
+  const segBtns = [...document.querySelectorAll("#levelSeg button")];
+  const TENURE_LABEL = { 1: "ต่ำกว่า 6 เดือน", 2: "6 เดือน–2 ปี", 3: "มากกว่า 2 ปี" };
+  function setLevel(n) {
+    examLevel = n;
+    segBtns.forEach((b) => b.setAttribute("aria-checked", String(Number(b.dataset.level) === n)));
+    const cell = $("tenureCell");
+    cell.classList.toggle("done", !!n);
+    cell.classList.remove("need");
+    $("tenureHint").textContent = n ? "เลือกแล้ว: อายุงาน " + TENURE_LABEL[n] + " (แตะเพื่อเปลี่ยนได้)" : "แตะเลือกอายุงานของคุณ 1 ข้อ";
+  }
+  segBtns.forEach((b) => b.addEventListener("click", () => setLevel(Number(b.dataset.level))));
+  setLevel(Number(store.get("level", "0")) || 0);
   el.autoSend.checked = store.get("autoSend", "0") === "1";
   el.autoSend.addEventListener("change", () => store.set("autoSend", el.autoSend.checked ? "1" : "0"));
   renderVoiceBtn();
@@ -704,30 +737,16 @@
   el.confirmEnd.addEventListener("click", () => closeDialog(true));
 
   /* ===================== Gold price card ===================== */
-  // Same estimated price for every candidate (set by the admin in GOLD_PRICE on the Worker)
-  const GOLD_WEIGHTS = [["1 สลึง", 0.25], ["2 สลึง", 0.5], ["1 บาท", 1], ["2 บาท", 2], ["5 บาท", 5]];
+  // Three reference prices only; the staff work out weights themselves.
   const fmt = (n) => Math.round(n).toLocaleString("th-TH");
   function renderGold(g) {
     const card = $("goldCard");
     if (!g || !g.ornament_sell) { card.hidden = true; return; }
     card.hidden = false;
-    $("goldSum").textContent = "ขาย " + fmt(g.ornament_sell) + " | รับซื้อ " + fmt(g.ornament_buy) + " /บาท";
-    const rows = $("goldRows"); rows.textContent = "";
-    GOLD_WEIGHTS.forEach(([label, w]) => {
-      const tr = document.createElement("tr");
-      [label, fmt(g.ornament_sell * w), fmt(g.ornament_buy * w)].forEach((v) => { const td = document.createElement("td"); td.textContent = v; tr.appendChild(td); });
-      rows.appendChild(tr);
-    });
-    $("goldNote").textContent = "* ยังไม่รวมค่ากำเหน็จ" + (g.making_charge_note ? " (" + g.making_charge_note + ")" : "") +
-      " | ทองคำแท่ง ขายออก " + fmt(g.bar_sell) + " / รับซื้อ " + fmt(g.bar_buy) + " | " + (g.label || "ราคาสำหรับการสอบ");
+    $("gSell").textContent = fmt(g.ornament_sell);
+    $("gBuy").textContent = fmt(g.ornament_buy);
+    $("gPawn").textContent = g.pawn ? fmt(g.pawn) : "-";
   }
-  $("goldToggle").addEventListener("click", () => {
-    const open = $("goldDetail").hidden;
-    $("goldDetail").hidden = !open;
-    $("goldCard").classList.toggle("open", open);
-    $("goldToggle").setAttribute("aria-expanded", String(open));
-    keepChatAtBottom();
-  });
 
   /* ===================== Settings check (?diag=1) ===================== */
   if (QS.has("diag")) {
@@ -800,15 +819,22 @@
   async function startSession() {
     const id = el.staffId.value.trim();
     const name = el.staffName.value.trim();
-    if (!id || !name) {
-      (id ? el.staffName : el.staffId).focus();
+    if (!id || !name || !examLevel) {
+      if (!id || !name) (id ? el.staffName : el.staffId).focus();
+      else {
+        const cell = $("tenureCell");
+        cell.classList.remove("need"); void cell.offsetWidth;   // restart the shake
+        cell.classList.add("need");
+        $("tenureHint").textContent = "กรุณาแตะเลือกอายุงานก่อนเริ่มสอบ";
+        cell.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
       el.notice.hidden = false;
-      el.notice.textContent = "กรอกรหัสพนักงานและชื่อ-นามสกุลก่อนเริ่มสอบ";
+      el.notice.textContent = !id || !name ? "กรอกรหัสพนักงานและชื่อ-นามสกุลก่อนเริ่มสอบ" : "เลือกอายุงานก่อนเริ่มสอบ";
       return;
     }
     if (!SR && !USE_RECORDER) { el.notice.hidden = false; return; }
-    if (el.remember.checked) { store.set("staffId", id); store.set("staffName", name); }
-    else { store.del("staffId"); store.del("staffName"); }
+    if (el.remember.checked) { store.set("staffId", id); store.set("staffName", name); store.set("level", String(examLevel)); }
+    else { store.del("staffId"); store.del("staffName"); store.del("level"); }
     el.notice.hidden = true;
     if (USE_RECORDER) primeRecorder();   // audio engine must be created inside this tap (iPhone)
 
@@ -825,21 +851,36 @@
     el.live.textContent = "";
     updateTurns();
 
-    const pool = PERSONAS.filter((p) => p !== lastPersonaId);
-    personaId = pool[Math.floor(Math.random() * pool.length)];
-    lastPersonaId = personaId;
+    personaId = null;
     persona = null;
+    levelLabel = "";
     renderPersona(null);
+    renderGold(null);
     show("session");
-    addSystem("ลูกค้าเดินเข้ามาในร้านแล้ว แตะปุ่มไมค์แล้วกล่าวทักทายได้เลย");
-    setState("idle");
+    const mySession = sessionId;
+    setState("busy", "กำลังเตรียมลูกค้าตามระดับของคุณ…");
+    el.micLabel.textContent = "กำลังเตรียมลูกค้า…";
 
-    try {
-      const data = await api("start", { personaId }, TIMEOUT.start);
-      persona = data.persona || null;
-      renderGold(data.gold || null);
-    } catch { /* card is optional; the exam still works */ }
+    // The Worker picks a customer from this level's pool (set in PERSONA_LEVELS)
+    let data = null;
+    try { data = await api("start", { level: examLevel, exclude: lastPersonaId }, TIMEOUT.start, 1); } catch {}
+    if (mySession !== sessionId) return;
+    if (!data || !data.persona) {
+      // Older Worker or no connection: pick locally, the exam still works
+      const pool = PERSONAS.filter((p) => p !== lastPersonaId);
+      personaId = pool[Math.floor(Math.random() * pool.length)];
+      try { data = await api("start", { personaId, level: examLevel }, TIMEOUT.start); } catch { data = data || {}; }
+      if (mySession !== sessionId) return;
+    } else {
+      personaId = data.persona.id;
+    }
+    lastPersonaId = personaId;
+    persona = (data && data.persona) || null;
+    levelLabel = (data && data.level_label) || "";
+    renderGold((data && data.gold) || null);
     renderPersona(persona);
+    addSystem((levelLabel ? levelLabel + " | " : "") + "ลูกค้าเดินเข้ามาในร้านแล้ว แตะปุ่มไมค์แล้วกล่าวทักทายได้เลย");
+    setState("idle");
   }
 
   function renderPersona(p) {
@@ -1104,7 +1145,7 @@
     setState("thinking");
     const bubble = addTyping();
 
-    const body = { sessionId, personaId, message: text, history: lines.slice(-CHAT_HISTORY_LINES).join("\n"), no_voice: Date.now() < ttsCooldownUntil, tts_prefer: examTtsModel };
+    const body = { sessionId, personaId, level: examLevel, message: text, history: lines.slice(-CHAT_HISTORY_LINES).join("\n"), no_voice: Date.now() < ttsCooldownUntil, tts_prefer: examTtsModel };
     const useCombined = voiceMode === "ai" && COMBINED_REQUEST && !combinedUnsupported;
     m.path = voiceMode !== "ai" ? "text" : useCombined ? "combined" : "separate";
     let data, preUrl = null, preErr = null, preModel = null;
@@ -1162,7 +1203,7 @@
     let r;
     try {
       r = await voiceTurn({
-        sessionId, personaId, audio: b64, mime: "audio/wav",
+        sessionId, personaId, level: examLevel, audio: b64, mime: "audio/wav",
         history: lines.slice(-CHAT_HISTORY_LINES).join("\n"),
         no_voice: Date.now() < ttsCooldownUntil,
         tts_prefer: examTtsModel,
@@ -1959,9 +2000,11 @@
         staffId: el.staffId.value.trim(),
         staffName: el.staffName.value.trim(),
         history: lines.join("\n"),
+        level: examLevel,
         latency: metrics,
         device: {
           version: APP_VERSION,
+          level: examLevel,
           platform: isIOS ? "ios" : isAndroid ? "android" : "desktop",
           net: (navigator.connection && navigator.connection.effectiveType) || null,
           variant: "combined:" + (COMBINED_REQUEST && !combinedUnsupported ? 1 : 0) + ",auto:" + (el.autoSend.checked ? 1 : 0),
@@ -1984,7 +2027,14 @@
     el.verdict.textContent = d.is_pass ? "ผ่านเกณฑ์" : "ยังไม่ผ่านเกณฑ์";
     el.verdict.className = "verdict " + (d.is_pass ? "pass" : "fail");
     const passed = d.passed_steps != null ? d.passed_steps : Math.round(pct / 20);
-    el.scoreSub.textContent = "ผ่าน " + passed + " จาก 5 ขั้นตอน (เกณฑ์ 4 ขั้นตอน) | ลูกค้า: " + ((persona && persona.name) || personaId) + " | " + turns + " รอบ";
+    const mustFailed = d.must_failed || [];
+    el.scoreSub.textContent = "ผ่าน " + passed + " จาก 5 ข้อ (เกณฑ์ 4 ข้อ" + ((d.steps || []).some((x) => x.must) ? " และผ่านข้อบังคับทุกข้อ" : "") + ") | ลูกค้า: " + ((persona && persona.name) || personaId) + " | " + turns + " รอบ" +
+      (mustFailed.length ? "\nไม่ผ่านข้อบังคับ: " + mustFailed.join(", ") : "");
+    el.scoreSub.style.whiteSpace = "pre-line";
+    let chip = document.getElementById("levelChip");
+    if (!chip) { chip = document.createElement("div"); chip.id = "levelChip"; chip.className = "level-chip"; el.scoreSub.after(chip); }
+    chip.textContent = d.level_label || levelLabel || "";
+    chip.hidden = !chip.textContent;
 
     el.resultSteps.textContent = "";
     (d.steps || []).forEach((s) => {
@@ -1995,6 +2045,7 @@
       mark.setAttribute("aria-label", s.passed ? "ผ่าน" : "ไม่ผ่าน");
       const body = document.createElement("div");
       const n = document.createElement("div"); n.className = "step-name"; n.textContent = s.step + ". " + s.name;
+      if (s.must) { const tag = document.createElement("span"); tag.className = "must-tag"; tag.textContent = "ข้อบังคับ"; n.appendChild(tag); }
       const r = document.createElement("div"); r.className = "step-reason"; r.textContent = s.reason || "";
       body.append(n, r);
       if (!s.passed && s.tip) {
