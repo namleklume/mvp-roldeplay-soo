@@ -495,7 +495,7 @@
 
       <div class="start-bar">
         <button class="btn-primary" id="startBtn" type="button">เริ่มสอบ</button>
-        <p class="version-tag" id="versionTag">เวอร์ชัน 3.7</p>
+        <p class="version-tag" id="versionTag">เวอร์ชัน 3.8</p>
       </div>
     </div>
   </section>
@@ -613,9 +613,9 @@
   const MIN_TURNS = 2;
   const MAX_LISTEN_MS = 60000;
   const TIMEOUT = { start: 8000, chat: 12000, tts: 20000, evaluate: 30000 };
-  const CHAT_HISTORY_LINES = 8;
+  const CHAT_HISTORY_LINES = 30;
   const DEBUG = new URLSearchParams(location.search).has("debug");
-  const APP_VERSION = "3.7";
+  const APP_VERSION = "3.8";
   const QS = new URLSearchParams(location.search);
   // Text + voice in one request (network only, never touches the mic).
   // Falls back to chat + tts automatically if the Worker is older. Off: ?combined=0
@@ -880,7 +880,8 @@
     levelLabel = (data && data.level_label) || "";
     renderGold((data && data.gold) || null);
     renderPersona(persona);
-    addSystem((levelLabel ? levelLabel + " | " : "") + "ลูกค้าเดินเข้ามาในร้านแล้ว แตะปุ่มไมค์แล้วกล่าวทักทายได้เลย");
+    const opening = (data && data.opening) || "ลูกค้าเดินเข้ามาในร้านแล้ว แตะปุ่มไมค์แล้วกล่าวทักทายได้เลย";
+    addSystem((levelLabel ? levelLabel + " | " : "") + opening);
     setState("idle");
   }
 
@@ -1635,12 +1636,22 @@
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
-      const res = await fetch(WEBHOOK_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(Object.assign({ action: "chat_voice" }, body)),   // body.action overrides
-        signal: ctrl.signal,
-      });
+      let res;
+      for (let attempt = 0; ; attempt++) {
+        try {
+          res = await fetch(WEBHOOK_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(Object.assign({ action: "chat_voice" }, body)),   // body.action overrides
+            signal: ctrl.signal,
+          });
+          break;
+        } catch (e) {
+          // connection dropped while the phone slept: one quiet retry
+          if (e.name === "AbortError" || attempt >= 1) throw e;
+          await new Promise((r) => setTimeout(r, 700));
+        }
+      }
       if (!res.ok) {
         const raw = await res.text();
         let d = null; try { d = JSON.parse(raw); } catch {}
@@ -1774,11 +1785,21 @@
   let heardVoice = false, lastLoudAt = 0, recLevel = 0, recStarting = false;
   const VOICE_RMS = 0.02;   // above this = someone is speaking
 
+  // Runs inside the tap (a user gesture), so a fresh audio engine is allowed to start.
+  // After the screen was locked or the app hidden, iPhone leaves the old one "interrupted"
+  // and it never delivers sound again, so we replace it instead of resuming it.
+  let needFreshCtx = false;
   function primeRecorder() {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
+    if (recCtx && (needFreshCtx || recCtx.state === "closed" || recCtx.state === "interrupted")) {
+      micTrace("ctx-renew:" + recCtx.state);
+      try { recCtx.close(); } catch {}
+      recCtx = null;
+    }
+    needFreshCtx = false;
     if (!recCtx) recCtx = new AC();
-    if (recCtx.state === "suspended") recCtx.resume().catch(() => {});
+    if (recCtx.state !== "running") recCtx.resume().catch(() => {});
   }
 
   async function startRecording() {
@@ -1804,7 +1825,7 @@
       return;
     }
     try {
-      if (recCtx.state === "suspended") await recCtx.resume();
+      if (recCtx.state !== "running") { try { await Promise.race([recCtx.resume(), new Promise((r) => setTimeout(r, 600))]); } catch {} }
       recRate = recCtx.sampleRate;
       recSource = recCtx.createMediaStreamSource(recStream);
       recProc = recCtx.createScriptProcessor(4096, 1, 1);
@@ -1834,6 +1855,15 @@
     vibrate([40, 60, 40]);
     setState("listening", el.autoSend.checked ? "กำลังฟัง… หยุดพูดแล้วระบบจะส่งให้เอง" : "กำลังฟัง… พูดจบแล้วแตะปุ่มอีกครั้ง");
     renderMeter();
+    const myRec = turnSeq;
+    setTimeout(() => {
+      if (state === "listening" && myRec === turnSeq && recChunks.length === 0) {
+        micTrace("no-audio:" + (recCtx && recCtx.state));
+        cancelRecording();
+        needFreshCtx = true;          // next tap starts a brand-new audio engine
+        setState("idle", "ไมค์ยังไม่พร้อมหลังพักหน้าจอ แตะปุ่มอีกครั้งแล้วพูดได้เลย", true);
+      }
+    }, 1500);
     clearInterval(recTick);
     recTick = setInterval(() => {
       if (state !== "listening") return;
@@ -2159,6 +2189,7 @@
       if (state === "speaking") setState("idle");
       wakeLock = null;
     } else {
+      if (USE_RECORDER) needFreshCtx = true;
       api("start", {}, TIMEOUT.start).catch(() => {});
       if (!el.session.hidden) requestWakeLock();
     }
