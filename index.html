@@ -495,7 +495,7 @@
 
       <div class="start-bar">
         <button class="btn-primary" id="startBtn" type="button">เริ่มสอบ</button>
-        <p class="version-tag" id="versionTag">เวอร์ชัน 3.9</p>
+        <p class="version-tag" id="versionTag">เวอร์ชัน 4.0</p>
       </div>
     </div>
   </section>
@@ -615,7 +615,7 @@
   const TIMEOUT = { start: 8000, chat: 12000, tts: 20000, evaluate: 30000 };
   const CHAT_HISTORY_LINES = 30;
   const DEBUG = new URLSearchParams(location.search).has("debug");
-  const APP_VERSION = "3.9";
+  const APP_VERSION = "4.0";
   const QS = new URLSearchParams(location.search);
   // Text + voice in one request (network only, never touches the mic).
   // Falls back to chat + tts automatically if the Worker is older. Off: ?combined=0
@@ -1757,7 +1757,14 @@
     }
   }
 
+  function quietRecognizer() {
+    // a recognizer still finishing keeps the phone in "call" audio mode during playback
+    if (rec && recActive) { try { rec.abort(); } catch {} recActive = false; micTrace("abort-before-play"); }
+  }
+
   function playUrl(url, bubble, myTurn, onRefused) {
+    quietRecognizer();
+    setAudioSession("playback");
     stopAudio();
     playingBubble = bubble || null;
     if (bubble) setReplayIcon(bubble, "playing");
@@ -1828,6 +1835,11 @@
   // After the screen was locked or the app hidden, iPhone leaves the old one "interrupted"
   // and it never delivers sound again, so we replace it instead of resuming it.
   let needFreshCtx = false;
+  // iPhone keeps "call" audio mode (hiss, "radio" sound) while it thinks we still record.
+  // Tell Safari explicitly when we record and when we only play (no-op elsewhere).
+  function setAudioSession(type) {
+    try { if (navigator.audioSession) navigator.audioSession.type = type; } catch {}
+  }
   function primeRecorder() {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
@@ -1837,6 +1849,7 @@
       recCtx = null;
     }
     needFreshCtx = false;
+    setAudioSession("play-and-record");
     if (!recCtx) recCtx = new AC();
     if (recCtx.state !== "running") recCtx.resume().catch(() => {});
   }
@@ -1852,7 +1865,7 @@
     setStatus("กำลังเปิดไมค์…");
     try {
       recStream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
+        audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
       });
     } catch (e) {
       recStarting = false;
@@ -1936,6 +1949,11 @@
     try { recSink && recSink.disconnect(); } catch {}
     try { recStream && recStream.getTracks().forEach((t) => t.stop()); } catch {}   // mic off between sentences
     recSource = recProc = recSink = recStream = null;
+    // Close the recording engine too: while it stays open, phones keep the "call" audio
+    // mode and the customer's voice plays with hiss. A new one is made on the next tap.
+    try { recCtx && recCtx.close(); } catch {}
+    recCtx = null;
+    setAudioSession("playback");
   }
 
   function cancelRecording() { teardownRecorder(); recChunks = []; el.live.textContent = ""; }
