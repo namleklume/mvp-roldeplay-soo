@@ -495,7 +495,7 @@
 
       <div class="start-bar">
         <button class="btn-primary" id="startBtn" type="button">เริ่มสอบ</button>
-        <p class="version-tag" id="versionTag">เวอร์ชัน 4.0</p>
+        <p class="version-tag" id="versionTag">เวอร์ชัน 4.1</p>
       </div>
     </div>
   </section>
@@ -615,7 +615,7 @@
   const TIMEOUT = { start: 8000, chat: 12000, tts: 20000, evaluate: 30000 };
   const CHAT_HISTORY_LINES = 30;
   const DEBUG = new URLSearchParams(location.search).has("debug");
-  const APP_VERSION = "4.0";
+  const APP_VERSION = "4.1";
   const QS = new URLSearchParams(location.search);
   // Text + voice in one request (network only, never touches the mic).
   // Falls back to chat + tts automatically if the Worker is older. Off: ?combined=0
@@ -1392,7 +1392,9 @@
       bubble._audioUrl = url;
       m.trim_lead_ms = trimByUrl.get(url);
       const used = preUrl ? preModel : lastTtsModel;
-      if (used) { m.tts_model = used; examTtsModel = used; }   // stay on this model for the rest of the exam
+      // The exam keeps its FIRST voice model. If that model refuses one sentence, the backup
+      // speaks only that sentence; the next one goes back to the main model (no lasting switch).
+      if (used) { m.tts_model = used; if (!examTtsModel) examTtsModel = used; }
       setState("speaking");
       playUrl(url, bubble, myTurn, (errName) => {   // phone refused to start playback
         m.voice_error = "PLAY:" + errName;
@@ -1615,6 +1617,20 @@
         last = Math.max(first, back);
         noiseAt = cutW * WIN;                          // never pad into the noise
         break;
+      }
+    }
+    // Thai sentences end on a vowel or voiced sound (ค่ะ ครับ นะ), never on a hiss.
+    // So anything hiss-like after the last voiced syllable is noise, however quiet.
+    let lastVoiced = -1;
+    for (let w = last; w >= first; w--) { if (loud[w] && zcr[w] < 0.25) { lastVoiced = w; break; } }
+    if (lastVoiced >= first && lastVoiced < last) {
+      let hissy = 0, total = 0;
+      for (let w = lastVoiced + 1; w <= last; w++) { if (loud[w]) { total++; if (zcr[w] > 0.3) hissy++; } }
+      if (total >= 2 && hissy / total >= 0.6) {
+        const tailCut = Math.round(((last - lastVoiced) * WIN / rate) * 1000);
+        lastNoiseCutMs = Math.max(lastNoiseCutMs, tailCut);
+        if (noiseAt < 0 || (lastVoiced + 1) * WIN < noiseAt) noiseAt = (lastVoiced + 1) * WIN + Math.round(rate * 0.04);
+        last = lastVoiced;
       }
     }
     const start = Math.max(0, first * WIN - LEAD_PAD);
