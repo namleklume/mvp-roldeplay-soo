@@ -1,3 +1,122 @@
+Claude
+Comparing other ways to avoid the terminal
+เข้าใจครับ ขั้นตอน Wrangler ต้องใช้ command line ซึ่งไม่ควรเป็นภาระของคุณ มีทางที่ง่ายกว่านี้ เรียงจากง่ายที่สุด:
+
+ทางที่ 1: เปิด Smart Placement (กดครั้งเดียว ไม่ต้องติดตั้งอะไร)
+#	ทำอะไร
+1	หน้า Worker → Settings
+2	หาหัวข้อ Placement (บางหน้าจออยู่ใต้ Runtime) → เปลี่ยนเป็น Smart → บันทึก
+3	รอสักระยะ (อาจหลายชั่วโมง) แล้วเปิด ?diag=1 ตรวจซ้ำ ถ้าทุกแถวผ่านแม้ data center ยังเป็น HKG แปลว่าได้ผล
+ข้อจำกัด: Cloudflare เป็นคนตัดสินใจว่าจะย้ายหรือไม่ จึงไม่รับประกัน แต่ลองได้ฟรีและไม่มีความเสี่ยง
+
+ทางที่ 2: เปลี่ยนเครือข่าย (ใช้ได้ทันที เหมาะกับวัน Townhall)
+data center ขึ้นกับเครือข่ายที่ใช้ ลองเปิด ?diag=1 บนมือถือที่ใช้อินเทอร์เน็ตมือถือ (ปิด Wi-Fi) ถ้าเครือข่ายไหนขึ้น BKK หรือ SIN ระบบจะใช้งานได้ปกติ วันงานให้ใช้เครือข่ายนั้น (หรือแชร์ hotspot จากมือถือเครื่องนั้นให้เครื่องที่ใช้ demo) และตรวจ ?diag=1 ที่สถานที่จริงก่อนขึ้นเวที
+
+ทางที่ 3: ให้ทีม IT ช่วย 15 นาที
+ส่งไฟล์ worker.js และ wrangler.toml พร้อมข้อความนี้ให้คนที่เคยใช้ command line:
+
+"ช่วยใส่ KV ID, D1 name/ID ใน wrangler.toml แล้วรัน npx wrangler login กับ npx wrangler deploy ให้หน่อย (ตั้ง keep_vars ไว้แล้ว ตัวแปรเดิมไม่หาย)"
+
+ทำครั้งเดียวจบ หลังจากนั้นคุณแก้โค้ดผ่านหน้า Cloudflare ได้เหมือนเดิม
+
+คำแนะนำของผม: ทำทางที่ 1 ตอนนี้เลย (ใช้เวลา 1 นาที) และทดสอบทางที่ 2 เผื่อไว้สำหรับวันงาน ถ้าสุดท้ายยังเจอ HKG บ่อย ค่อยใช้ทางที่ 3 ครับ
+
+ถ้าอยากลองทางที่ 3 เองแต่ไม่อยากทำคนเดียว ผมพาทำทีละขั้นได้ครับ คุณแคปหน้าจอแต่ละขั้นมา ผมบอกว่าต้องกดหรือพิมพ์อะไรต่อ
+
+แล้ว worker, index ที่เปลี่ยนไปแล้วละ ตอนนี้ฉันต้องใช้เวอร์ชั่นใด
+
+Checking whether the relay export breaks without a binding
+ใช้ไฟล์ล่าสุดทั้งคู่ได้เลยครับ ปลอดภัยแม้ยังไม่ได้ตั้ง relay
+
+ไฟล์	เวอร์ชันที่ใช้	ต้องทำอะไร
+worker.js	ล่าสุด (มีโค้ด relay แต่จะไม่ทำงานจนกว่าจะเพิ่ม binding GEMINI_RELAY ระหว่างนี้ทำงานเหมือนเดิมทุกประการ)	Cloudflare → Edit code → วาง → Deploy
+index.html	4.7	GitHub แทน index-roleplay.html → เปิดลิงก์ต่อท้าย ?v=47 ต้องเห็น "เวอร์ชัน 4.7"
+wrangler.toml	—	ยังไม่ต้องใช้ ใช้เฉพาะตอนทำทางที่ 3 (ให้ IT ช่วย)
+สิ่งที่ได้จากไฟล์ล่าสุด (เทียบกับ 4.5 ที่ใช้อยู่)
+เวอร์ชัน	สิ่งที่เพิ่ม
+Worker	ลูกค้า AI ตอบเรื่องสมาชิกถูกต้อง (เป็นสมาชิกแล้วไม่พูดว่าสมัคร)
+4.6	หน้า ?diag=1 บอกสาเหตุถูกต้อง (ไม่ใช่ชื่อโมเดลผิด) และแสดงชื่อ data center
+4.7	หน้า ?diag=1 แสดงสถานะตัวส่งต่อ ("ยังไม่ได้ตั้ง" ระหว่างนี้)
+ทดสอบแล้ว: ถ้าไม่มี relay ระบบทำงานเหมือนเดิม ทั้งเครือข่ายปกติ (ใช้งานได้) และเครือข่ายที่ผ่านฮ่องกง (ยังใช้งานไม่ได้เหมือนก่อนหน้า จนกว่าจะตั้ง relay หรือเปลี่ยนเครือข่าย)
+
+ถ้ากด Deploy ใน Edit code แล้วมีข้อความ error ขึ้น แคปมาให้ผมดูได้เลยครับ
+
+1793179080037_image.png
+ก่อนหน้านี้ SIN ผ่านหมด ตอนนี้ SIN ไม่ผ่านสักข้อ
+
+Comparing a gateway fallback with a fixed-region proxy
+ข้อมูลนี้สำคัญมากครับ และทำให้ผมต้องแก้การวิเคราะห์ของตัวเอง: สิงคโปร์เป็นพื้นที่ที่ Gemini รองรับ แต่ก็ยังถูกปฏิเสธ แปลว่าชื่อ data center (SIN, HKG) ไม่ใช่ตัวตัดสิน
+
+สิ่งที่ผมเข้าใจผิด	สิ่งที่น่าจะเกิดขึ้นจริง
+Gemini ดูว่าผู้ใช้เข้ามาทาง data center ไหน	Gemini ดู IP ที่ Cloudflare ใช้ส่งคำขอออกไป ซึ่งเป็น IP ที่ใช้ร่วมกันหลายลูกค้า และ Google อาจระบุตำแหน่งของ IP เหล่านี้เป็นพื้นที่ที่ไม่รองรับได้เป็นช่วงๆ
+แก้ได้ด้วย relay ใน Cloudflare (Durable Object)	relay ก็ยังส่งออกด้วย IP ของ Cloudflare จึงไม่รับประกันว่าจะหาย ดีแล้วที่ยังไม่ได้ทำขั้นตอน Wrangler
+จึงต้องให้คำขอไปหา Gemini ออกจากที่อื่นที่ไม่ใช่ Cloudflare มี 2 ทาง และไม่ต้องใช้ command line ทั้งคู่:
+
+ทาง	คืออะไร	ความแน่นอน	ความยาก
+A. Cloudflare AI Gateway	บริการของ Cloudflare ที่ส่งต่อคำขอไปหา Gemini ให้ ตั้งในหน้าเว็บ	มีผู้ใช้รายงานว่าช่วยได้ แต่ยังเป็นของ Cloudflare ไม่รับประกัน	ง่ายมาก (3 นาที กดในหน้าเว็บ)
+B. ตัวส่งต่อบน Vercel	ฟังก์ชันเล็กๆ บน Vercel ที่ตั้งให้อยู่ที่สิงคโปร์ตายตัว ส่งคำขอด้วย IP ของ AWS	แน่นอนที่สุด	ปานกลาง (อัปโหลดไฟล์ขึ้น GitHub แบบเดียวกับที่ทำกับหน้าเว็บ แล้วกด import ใน Vercel)
+ผมจะทำให้ Worker รองรับทั้งสองทางผ่านตัวแปรเดียว GEMINI_FALLBACK_BASE โดยใช้เฉพาะตอนถูกปฏิเสธเรื่องพื้นที่:
+
+Ran 2 commands
+Testing both routes in the Worker (AI Gateway–style and Vercel-style base URLs), and the proxy function itself with a simulated Vercel request:
+
+Ran 2 commands, shared files
+ข้อมูลนี้ทำให้ผมต้องแก้การวิเคราะห์ของตัวเองครับ: สิงคโปร์เป็นพื้นที่ที่ Gemini รองรับแต่ก็ยังถูกปฏิเสธ แปลว่าชื่อ data center ไม่ใช่ตัวตัดสิน
+
+ที่ผมเข้าใจผิด	ที่น่าจะเกิดขึ้นจริง
+Gemini ดูว่าผู้ใช้เข้ามาทาง data center ไหน	Gemini ดู IP ที่ Cloudflare ใช้ส่งคำขอออกไป ซึ่งเป็น IP ที่ใช้ร่วมกับลูกค้ารายอื่น และ Google อาจระบุตำแหน่ง IP เหล่านี้เป็นพื้นที่ที่ไม่รองรับได้เป็นช่วงๆ
+แก้ได้ด้วย relay ใน Cloudflare	relay ก็ยังใช้ IP ของ Cloudflare จึงไม่รับประกัน ดีแล้วที่ยังไม่ได้ทำขั้นตอน Wrangler ข้ามขั้นตอนนั้นไปได้เลย
+ทางแก้ที่ถูกคือให้คำขอไปหา Gemini ออกจากที่อื่น เวอร์ชันนี้รองรับ 2 ทาง ผ่านตัวแปรเดียว GEMINI_FALLBACK_BASE และใช้เฉพาะตอนถูกปฏิเสธ ช่วงปกติเรียกตรงเหมือนเดิม ไม่ช้าลง ทั้งสองทางไม่ต้องใช้ command line
+
+ไฟล์ที่ต้องใช้ตอนนี้
+ไฟล์	ทำอะไร
+worker.js (ล่าสุด)	Edit code → วาง → Deploy
+index.html เวอร์ชัน 4.8	GitHub แทนไฟล์เดิม
+โฟลเดอร์ gemini_proxy_vercel (3 ไฟล์)	ใช้เฉพาะทาง B
+wrangler.toml	ไม่ต้องใช้แล้ว
+ทาง A: Cloudflare AI Gateway (ลองก่อน ง่ายที่สุด ประมาณ 3 นาที)
+#	ทำอะไร
+1	Cloudflare → เมนู AI → AI Gateway → Create Gateway → ตั้งชื่อ aurora → สร้าง
+2	ในหน้า gateway กด API (หรือ Endpoint) → เลือก provider Google AI Studio → คัดลอก URL ที่ลงท้ายด้วย /google-ai-studio
+3	Worker → Settings → Variables → เพิ่ม GEMINI_FALLBACK_BASE = URL ที่คัดลอกมา → Deploy
+4	เปิด ?diag=1 → "ตรวจรวมโมเดลเสียง" บรรทัดสรุปต้องขึ้น "เส้นทางสำรอง: gateway.ai.cloudflare.com" แล้วดูว่าทุกแถวผ่านหรือไม่
+AI Gateway ยังเป็นของ Cloudflare จึงอาจได้ผลหรือไม่ได้ผล ข้อดีคือทดสอบได้ในไม่กี่นาที ถ้ายังไม่ผ่าน ไปทาง B
+
+ทาง B: ตัวส่งต่อบน Vercel (แน่นอนที่สุด ประมาณ 15 นาที)
+ฟังก์ชันเล็กๆ ที่ตั้งให้อยู่สิงคโปร์ตายตัว ส่งคำขอด้วย IP ของ AWS ป้องกันด้วยรหัสผ่าน และรับเฉพาะคำขอไปหา Gemini (ทดสอบแล้ว)
+
+#	ทำอะไร
+1	GitHub → สร้าง repository ใหม่ชื่อ aurora-gemini-proxy → Add file → Upload files → ลากทั้งโฟลเดอร์ gemini_proxy_vercel เข้าไป (ต้องมี api/gemini.js, vercel.json, package.json) → Commit
+2	vercel.com → Sign up / Log in with GitHub (แพ็กเกจ Hobby ฟรี)
+3	Add New → Project → เลือก aurora-gemini-proxy → เปิด Environment Variables → เพิ่ม PROXY_TOKEN = รหัสผ่านที่ตั้งเอง (เช่น ตัวอักษรสุ่ม 20 ตัว) → Deploy
+4	Vercel ให้ URL เช่น https://aurora-gemini-proxy.vercel.app
+5	Cloudflare Worker → Variables → GEMINI_FALLBACK_BASE = https://aurora-gemini-proxy.vercel.app/gemini และเพิ่ม Secret GEMINI_PROXY_TOKEN = รหัสผ่านเดียวกับข้อ 3 → Deploy
+6	เปิด ?diag=1 → ต้องขึ้น "เส้นทางสำรอง: aurora-gemini-proxy.vercel.app" และทุกแถวผ่าน
+ช่วงที่ใช้ทางสำรอง แต่ละคำตอบอาจช้าลงเล็กน้อย (ประมาณ 0.1–0.3 วินาที) เพราะสิงคโปร์อยู่ใกล้ไทย
+
+คำแนะนำ: ลองทาง A ก่อน ถ้าผ่านก็จบ ถ้าไม่ผ่าน ทาง B คือทางที่ผมมั่นใจที่สุดสำหรับวัน Townhall ระหว่างทำ ถ้าติดตรงไหน แคปหน้าจอมาได้เลย ผมพาทำทีละขั้นครับ
+
+Worker
+JS
+Index
+Code
+·HTML
+Gemini
+JS
+Vercel
+Code
+·JSON
+Package
+Code
+·JSON
+
+
+
+
+Claude is AI and can make mistakes. Please double-check responses.
+
+
+Index · HTML
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -36,7 +155,7 @@
       color-scheme: light;
     }
     @media (min-resolution: 2dppx) { :root { --hair: 0.5px; } }
-
+ 
     * { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; }
     body {
@@ -52,14 +171,14 @@
     button { cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; border: none; }
     :focus-visible { outline: 3px solid rgba(232, 113, 10, 0.55); outline-offset: 2px; }
     [hidden] { display: none !important; }
-
+ 
     .app {
       height: 100dvh;
       display: flex;
       flex-direction: column;
       padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
     }
-
+ 
     /* Navigation bar: translucent with hairline, like iOS */
     .topbar {
       position: relative;
@@ -82,10 +201,10 @@
       white-space: nowrap;
     }
     .chip-btn:active { background: var(--tint-strong); }
-
+ 
     .screen { flex: 1; min-height: 0; display: flex; flex-direction: column; }
     .wrap { width: 100%; max-width: 600px; margin: 0 auto; }
-
+ 
     /* ===== Inset grouped list (iOS Settings style) ===== */
     .group-title { font-size: 14px; color: var(--label-2); margin: 22px 16px 7px; }
     .group-footer { font-size: 14px; color: var(--label-2); margin: 7px 16px 0; line-height: 1.5; }
@@ -115,7 +234,7 @@
       padding: 4px 0;
     }
     .cell input::placeholder { color: #A1A1A6; }
-
+ 
     /* iOS switch */
     .switch {
       -webkit-appearance: none; appearance: none;
@@ -134,7 +253,7 @@
     }
     .switch:checked { background: var(--accent); }
     .switch:checked::after { transform: translateX(20px); }
-
+ 
     /* Numbered steps (a real sequence) */
     .steps { list-style: none; margin: 0; padding: 0; --sep-inset: 56px; }
     .steps li { position: relative; display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 9px 16px; counter-increment: s; }
@@ -147,7 +266,7 @@
       background: var(--tint); color: var(--accent-text);
       font-weight: 700; font-size: 15px;
     }
-
+ 
     /* Buttons */
     .btn-primary {
       width: 100%; min-height: 52px;
@@ -163,7 +282,7 @@
       font-size: 17px; font-weight: 600;
     }
     .btn-secondary:active { background: rgba(118,118,128,.2); }
-
+ 
     .diag-box { padding: 14px 16px; }
     .diag-help { margin: 0 0 10px; font-size: 14px; color: var(--label-2); line-height: 1.5; }
     .diag-actions { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -224,7 +343,7 @@
       background: var(--red-tint); color: var(--red);
       font-size: 15px;
     }
-
+ 
     /* ===== Setup ===== */
     .setup { overflow-y: auto; padding: 0 16px calc(24px + env(safe-area-inset-bottom)); }
     .setup h1 { font-size: 30px; line-height: 1.3; margin: 20px 0 6px; font-weight: 700; }
@@ -236,7 +355,7 @@
       padding: 14px 0 calc(16px + env(safe-area-inset-bottom));
       background: linear-gradient(to bottom, rgba(255,248,241,0), var(--bg) 30%);
     }
-
+ 
     /* ===== Session ===== */
     .session { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; min-height: 0; flex: 1; }
     .session > * { min-width: 0; }
@@ -270,7 +389,7 @@
     .pd-key { flex: none; width: 64px; color: var(--label-2); }
     .pd-val { min-width: 0; overflow-wrap: anywhere; }
     .mission-wrap { display: none; }
-
+ 
     .chat {
       position: relative; z-index: 0;
       overflow-y: auto;
@@ -303,7 +422,7 @@
     .eq i { width: 3px; height: 6px; border-radius: 2px; background: var(--accent-text); animation: eq .9s infinite ease-in-out; }
     .eq i:nth-child(2) { animation-delay: .2s; } .eq i:nth-child(3) { animation-delay: .4s; } .eq i:nth-child(4) { animation-delay: .1s; }
     @keyframes eq { 0%, 100% { height: 5px; } 50% { height: 17px; } }
-
+ 
     /* Bottom toolbar: translucent with hairline */
     .controls {
       position: relative;
@@ -323,7 +442,7 @@
     .status { min-height: 20px; font-size: 14px; color: var(--label-2); text-align: center; }
     .status.error { color: var(--red); }
     .row { display: flex; gap: 10px; }
-
+ 
     .mic {
       flex: 1; min-height: 60px;
       border-radius: 18px;
@@ -356,7 +475,7 @@
       border-radius: 999px; padding: 6px 16px; min-height: 40px;
       font-size: 15px; font-weight: 600;
     }
-
+ 
     /* ===== Result ===== */
     .result { overflow-y: auto; padding: 0 16px calc(24px + env(safe-area-inset-bottom)); }
     .score-card { text-align: center; padding: 26px 16px 22px; margin-top: 20px; }
@@ -383,7 +502,7 @@
     details[open] summary::after { transform: rotate(90deg); }
     .transcript { white-space: pre-wrap; font-size: 15px; color: var(--label-2); margin: 0; padding: 0 16px 14px; }
     .stack { display: flex; flex-direction: column; gap: 10px; margin-top: 24px; }
-
+ 
     /* ===== iOS-style alert ===== */
     dialog.alert {
       border: none; padding: 0;
@@ -406,7 +525,7 @@
     .alert-actions button + button { box-shadow: inset var(--hair) 0 0 var(--sep); }
     .alert-actions .strong { font-weight: 700; }
     .alert-actions button:active { background: rgba(0,0,0,.05); }
-
+ 
     /* ===== Tablet landscape / desktop ===== */
     @media (min-width: 900px) {
       .session { grid-template-columns: 340px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
@@ -487,15 +606,15 @@
     </div>
     <button class="chip-btn" id="voiceBtn" type="button" aria-label="เปลี่ยนโหมดเสียง">🔊 เสียง AI</button>
   </header>
-
+ 
   <!-- 1. Setup -->
   <section class="screen setup" id="setupScreen">
     <div class="wrap">
       <h1><span class="nw">สอบมาตรฐาน</span><wbr><span class="nw">บริการหน้าร้าน</span></h1>
       <p class="lead">คุยกับลูกค้าจำลองด้วยเสียง เหมือนลูกค้าเดินเข้าร้านจริง แล้วรับผลประเมินตามขั้นตอนการขาย</p>
-
+ 
       <div class="notice" id="browserNotice" hidden></div>
-
+ 
       <div id="diagPanel" hidden>
         <div class="group-title">ตรวจการตั้งค่า (สำหรับผู้ดูแล)</div>
         <div class="group diag-box">
@@ -507,7 +626,7 @@
           <div id="diagOut" class="diag-out"></div>
         </div>
       </div>
-
+ 
       <div class="group-title">ข้อมูลพนักงาน</div>
       <div class="group">
         <label class="cell">
@@ -539,21 +658,21 @@
         </label>
       </div>
       <p class="group-footer">เมื่อเปิด ระบบจะส่งให้เองหลังหยุดพูดประมาณ 2 วินาที ถ้าปิด ให้แตะปุ่มไมค์อีกครั้งเมื่อพูดจบ</p>
-
+ 
       <div class="group-title">วิธีใช้</div>
       <div class="group howto">
         <div class="cell"><span class="n">1</span>เลือกอายุงาน แล้วแตะ "เริ่มสอบ" ระบบจะเลือกลูกค้าตามระดับให้ 1 คน</div>
         <div class="cell"><span class="n">2</span>แตะปุ่มไมค์แล้วพูด พูดจบแตะอีกครั้งเพื่อส่ง</div>
         <div class="cell"><span class="n">3</span>คุยจนจบการขาย แล้วแตะ "จบและดูผล"</div>
       </div>
-
+ 
       <div class="start-bar">
         <button class="btn-primary" id="startBtn" type="button">เริ่มสอบ</button>
-        <p class="version-tag" id="versionTag">เวอร์ชัน 4.7</p>
+        <p class="version-tag" id="versionTag">เวอร์ชัน 4.8</p>
       </div>
     </div>
   </section>
-
+ 
   <!-- 2. Session -->
   <section class="screen session" id="sessionScreen" hidden>
     <aside class="side">
@@ -582,9 +701,9 @@
         </div>
       </div>
     </aside>
-
+ 
     <div class="chat" id="chatBox" role="log" aria-live="polite"></div>
-
+ 
     <div class="controls">
       <div class="live" id="liveText"></div>
       <button class="retry-btn" id="retryBtn" type="button" hidden>ส่งประโยคเดิมอีกครั้ง</button>
@@ -598,7 +717,7 @@
       <div class="status" id="statusText" role="status"></div>
     </div>
   </section>
-
+ 
   <!-- 3. Result -->
   <section class="screen result" id="resultScreen" hidden>
     <div class="wrap">
@@ -607,28 +726,28 @@
         <div class="verdict" id="verdict"></div>
         <div class="score-sub" id="scoreSub"></div>
       </div>
-
+ 
       <div class="group-title">ผลรายขั้นตอน</div>
       <ul class="group result-steps" id="resultSteps"></ul>
-
+ 
       <div id="priceWrap" hidden>
         <div class="group-title">การคำนวณราคา</div>
         <div class="group" id="priceList"></div>
         <p class="group-footer">ยอดที่แจ้งลูกค้าต้องตรงเป๊ะ คำนวณผิดแม้ 1 ครั้ง = ไม่ผ่านการสอบ (อ้างอิงราคาขายจากการ์ดราคาทองระหว่างสอบ)</p>
       </div>
-
+ 
       <div id="langWrap" hidden>
         <div class="group-title">ข้อควรระวังด้านภาษาและมารยาท</div>
         <div class="group"><ul class="kw lang" id="langList"></ul></div>
         <p class="group-footer">ไม่มีผลต่อคะแนน 5 ขั้นตอน แต่ควรปรับก่อนเจอลูกค้าจริง</p>
       </div>
-
+ 
       <div class="group-title">สรุปจากกรรมการ</div>
       <div class="group">
         <p class="summary" id="summaryText"></p>
         <ul class="kw" id="keywordList"></ul>
       </div>
-
+ 
       <div class="group-title">บทสนทนา</div>
       <div class="group">
         <details>
@@ -636,7 +755,7 @@
           <p class="transcript" id="transcriptText"></p>
         </details>
       </div>
-
+ 
       <div class="stack">
         <button class="btn-primary" id="againBtn" type="button">สอบใหม่กับลูกค้าคนใหม่</button>
         <button class="btn-secondary" id="homeBtn" type="button">กลับหน้าแรก</button>
@@ -644,7 +763,7 @@
     </div>
   </section>
 </div>
-
+ 
 <dialog id="confirmDialog" class="alert">
   <div class="alert-body">
     <h2>จบการสนทนา?</h2>
@@ -655,11 +774,11 @@
     <button id="confirmEnd" class="strong" type="button">ส่งประเมิน</button>
   </div>
 </dialog>
-
+ 
 <script>
 (() => {
   "use strict";
-
+ 
   /* ===================== Config ===================== */
   // ⚠️ URL ของ Cloudflare Worker
   const WEBHOOK_URL = "https://aurora-roleplay-backend.pongporn-lek.workers.dev/";
@@ -669,7 +788,7 @@
   const TIMEOUT = { start: 8000, chat: 12000, tts: 20000, evaluate: 30000 };
   const CHAT_HISTORY_LINES = 30;
   const DEBUG = new URLSearchParams(location.search).has("debug");
-  const APP_VERSION = "4.7";
+  const APP_VERSION = "4.8";
   const QS = new URLSearchParams(location.search);
   // Text + voice in one request (network only, never touches the mic).
   // Falls back to chat + tts automatically if the Worker is older. Off: ?combined=0
@@ -679,7 +798,7 @@
   const EARLY_REVEAL_MS = 1200;
   const VOICE_WAIT_MS = 6000;     // after this the mic is free again (voice may still follow)
   const LATE_VOICE_MAX_MS = 20000; // a voice later than this after its text is not auto-played   // show reply text this long after it arrives if the voice is still coming
-
+ 
   /* ===================== Elements ===================== */
   const $ = (id) => document.getElementById(id);
   const el = {
@@ -696,14 +815,14 @@
     transcript: $("transcriptText"), again: $("againBtn"), home: $("homeBtn"),
     dialog: $("confirmDialog"), cancelEnd: $("cancelEnd"), confirmEnd: $("confirmEnd"),
   };
-
+ 
   /* ===================== Storage (safe) ===================== */
   const store = {
     get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch { return d; } },
     set(k, v) { try { localStorage.setItem(k, v); } catch {} },
     del(k) { try { localStorage.removeItem(k); } catch {} },
   };
-
+ 
   /* ===================== State ===================== */
   let state = "idle";            // idle | listening | thinking | speaking | busy | cooldown
   let persona = null;            // public card
@@ -724,7 +843,7 @@
   let levelLabel = "";
   let lastTtsModel = null;
   let micLog = [];               // ?debug=1: what the microphone did
-
+ 
   const VOICE_MODES = [
     { id: "ai", label: "🔊 เสียง AI" },
     { id: "device", label: "🗣️ เสียงเครื่อง" },
@@ -735,7 +854,7 @@
   const TTS_RETRY_DELAY_MS = 1200;
   const TTS_COOLDOWN_MS = 20000;   // after a quota error, pause automatic voice requests for 20 s
   let ttsCooldownUntil = 0;
-
+ 
   /* ===================== Browser support ===================== */
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   const isAndroid = /Android/i.test(navigator.userAgent);
@@ -746,14 +865,14 @@
   // played audio, so on iPhone (and browsers without it) we record and Gemini listens.
   // Override for testing: ?rec=1 (force recording) / ?rec=0 (force built-in).
   const USE_RECORDER = canRecord && (QS.get("rec") === "1" || (QS.get("rec") !== "0" && (isIOS || !SR)));
-
+ 
   if (!SR && !USE_RECORDER) {
     el.notice.hidden = false;
     el.notice.textContent = isIOS
       ? "เบราว์เซอร์นี้ยังใช้ไมค์กับระบบนี้ไม่ได้ กรุณาเปิดด้วย Safari (iOS 14.5 ขึ้นไป) หรือ Chrome"
       : "เบราว์เซอร์นี้ยังใช้ไมค์กับระบบนี้ไม่ได้ กรุณาเปิดด้วย Google Chrome หรือ Microsoft Edge";
   }
-
+ 
   /* ===================== Init ===================== */
   el.staffId.value = store.get("staffId", "");
   el.staffName.value = store.get("staffName", "");
@@ -790,7 +909,7 @@
   el.personaToggle.addEventListener("click", () => setPersonaOpen(!el.personaCard.classList.contains("open")));
   el.cancelEnd.addEventListener("click", () => closeDialog(false));
   el.confirmEnd.addEventListener("click", () => closeDialog(true));
-
+ 
   /* ===================== Gold price card ===================== */
   // Three reference prices only; the staff work out weights themselves.
   const fmt = (n) => Math.round(n).toLocaleString("th-TH");
@@ -802,20 +921,20 @@
     $("gBuy").textContent = fmt(g.ornament_buy);
     $("gPawn").textContent = g.pawn ? fmt(g.pawn) : "-";
   }
-
+ 
   /* ===================== Settings check (?diag=1) ===================== */
   if (QS.has("diag")) {
     $("diagPanel").hidden = false;
     $("diagTextBtn").addEventListener("click", () => runDiag(false));
     $("diagAllBtn").addEventListener("click", () => runDiag(true));
   }
-
+ 
   function diagAdvice(r) {
     const n = String(r.note || "");
     if (r.ok) return "ใช้ได้";
     if (r.ok === null) return "ยังไม่ได้ตรวจ";
     // must come first: this message also contains "not supported for"
-    if (/location is not supported|user location/i.test(n)) return "ไม่ใช่ปัญหาชื่อโมเดล: data center ของ Cloudflare ที่ตอบคำขอนี้อยู่ในพื้นที่ที่ Gemini ไม่รองรับ (ดูชื่อ data center ด้านบน) แก้ด้วยการเพิ่มตัวส่งต่อ GEMINI_RELAY ใน Worker";
+    if (/location is not supported|user location/i.test(n)) return "ไม่ใช่ปัญหาชื่อโมเดล: data center ของ Cloudflare ที่ตอบคำขอนี้อยู่ในพื้นที่ที่ Gemini ไม่รองรับ (ดูชื่อ data center ด้านบน) แก้ด้วยการตั้งเส้นทางสำรอง GEMINI_FALLBACK_BASE ใน Worker";
     if (r.status === 404 || /not found|not supported for|is not available/i.test(n)) return "ชื่อโมเดลไม่ถูกต้อง หรือโมเดลนี้เลิกให้บริการ: แก้ชื่อหรือลบออกจากรายการ";
     if (/api key|API_KEY/i.test(n)) return "API key นี้ใช้ไม่ได้: ลบออกจาก GEMINI_API_KEYS หรือสร้างใหม่";
     if (r.status === 403) return "key หรือโปรเจกต์ไม่มีสิทธิ์ใช้โมเดลนี้ (เช่น ยังไม่ผูก billing)";
@@ -823,7 +942,7 @@
     if (r.status === 400) return "Gemini ปฏิเสธคำขอ: ดูรายละเอียดในคอลัมน์ข้อความ";
     return "ตรวจไม่ผ่าน: ดูรายละเอียดในคอลัมน์ข้อความ";
   }
-
+ 
   async function runDiag(withTts) {
     const out = $("diagOut");
     out.textContent = withTts ? "กำลังตรวจทุกโมเดล รวมเสียง… (ประมาณ 10–40 วินาที)" : "กำลังตรวจโมเดลข้อความและ key… (ประมาณ 5–20 วินาที)";
@@ -857,7 +976,9 @@
       sum.className = "diag-help";
       const g = d.gold;
       sum.textContent = (g ? "ราคาทอง: " + (g.is_example ? "ยังใช้ค่าสมมติ (ตั้ง GOLD_PRICE เพื่อกำหนดเอง) " : g.label + " ") + "รูปพรรณ ขาย " + Math.round(g.ornament_sell).toLocaleString("th-TH") + " / รับซื้อ " + Math.round(g.ornament_buy).toLocaleString("th-TH") + " | " : "") + "จำนวน API key: " + d.keys + (d.edge && d.edge.colo ? " | Cloudflare data center: " + d.edge.colo + (d.edge.country ? " (" + d.edge.country + ")" : "") : "")
-        + (d.relay ? " | ตัวส่งต่อ: " + (d.relay.configured ? "ตั้งแล้ว (" + d.relay.region + ")" + (d.relay.used ? " ใช้งานอยู่ในการตรวจครั้งนี้" : " ยังไม่จำเป็นต้องใช้") : "ยังไม่ได้ตั้ง") : "") + " | ไม่ผ่าน " + bad + " รายการ" + (bad ? " (แก้ตามคอลัมน์ \"ผล / วิธีแก้\" แล้วตรวจใหม่)" : " ทุกอย่างพร้อมใช้งาน");
+        + (d.fallback && d.fallback.configured ? " | เส้นทางสำรอง: " + d.fallback.host + (d.fallback.used ? " (ใช้งานอยู่ในการตรวจครั้งนี้)" : " (ยังไม่จำเป็นต้องใช้)")
+           : d.relay && d.relay.configured ? " | ตัวส่งต่อ: ตั้งแล้ว (" + d.relay.region + ")" + (d.relay.used ? " ใช้งานอยู่ในการตรวจครั้งนี้" : "")
+           : d.fallback ? " | เส้นทางสำรอง: ยังไม่ได้ตั้ง (GEMINI_FALLBACK_BASE)" : "") + " | ไม่ผ่าน " + bad + " รายการ" + (bad ? " (แก้ตามคอลัมน์ \"ผล / วิธีแก้\" แล้วตรวจใหม่)" : " ทุกอย่างพร้อมใช้งาน");
       out.append(sum, t);
     } catch (e) {
       out.textContent = e.status === 400 && /Invalid action/i.test(e.message)
@@ -865,7 +986,7 @@
         : "ตรวจไม่สำเร็จ: " + (e.message || e);
     }
   }
-
+ 
   /* ===================== Screens ===================== */
   function show(name) {
     el.setup.hidden = name !== "setup";
@@ -873,7 +994,7 @@
     el.result.hidden = name !== "result";
     if (name !== "session") releaseWakeLock();
   }
-
+ 
   async function startSession() {
     const id = el.staffId.value.trim();
     const name = el.staffName.value.trim();
@@ -895,11 +1016,11 @@
     else { store.del("staffId"); store.del("staffName"); store.del("level"); }
     el.notice.hidden = true;
     if (USE_RECORDER) primeRecorder();   // audio engine must be created inside this tap (iPhone)
-
+ 
     stopAudio();
     unlockAudio();        // must happen inside this tap (iOS); never on the mic tap
     requestWakeLock();
-
+ 
     sessionId = (crypto.randomUUID ? crypto.randomUUID() : "SES-" + Date.now());
     lines = []; turns = 0; failedText = ""; turnSeq++; metrics = []; examTtsModel = null;
     releaseAudioUrls();
@@ -908,7 +1029,7 @@
     el.retry.hidden = true;
     el.live.textContent = "";
     updateTurns();
-
+ 
     personaId = null;
     persona = null;
     levelLabel = "";
@@ -918,7 +1039,7 @@
     const mySession = sessionId;
     setState("busy", "กำลังเตรียมลูกค้าตามระดับของคุณ…");
     el.micLabel.textContent = "กำลังเตรียมลูกค้า…";
-
+ 
     // The Worker picks a customer from this level's pool (set in PERSONA_LEVELS)
     let data = null;
     try { data = await api("start", { level: examLevel, exclude: lastPersonaId }, TIMEOUT.start, 1); } catch {}
@@ -942,7 +1063,7 @@
     addSystem((examLevel ? "ระดับ " + examLevel + " | " : "") + opening);
     setState("idle");
   }
-
+ 
   function renderPersona(p) {
     if (!p) {
       el.pAvatar.textContent = "?";
@@ -959,14 +1080,14 @@
     el.pdIntent.textContent = p.buying_intent || "-";
     el.pdPersonality.textContent = p.personality || "-";
   }
-
+ 
   function setPersonaOpen(open) {
     el.personaCard.classList.toggle("open", open);
     el.personaToggle.setAttribute("aria-expanded", String(open));
   }
-
+ 
   function updateTurns() { el.turnCount.textContent = turns + " รอบ"; }
-
+ 
   /* ===================== State machine ===================== */
   function setState(s, msg, isError) {
     state = s;
@@ -993,12 +1114,12 @@
     };
     setStatus(msg !== undefined ? msg : defaults[s], isError);
   }
-
+ 
   function setStatus(text, isError) {
     el.status.textContent = text || "";
     el.status.classList.toggle("error", !!isError);
   }
-
+ 
   function onMicTap(e) {
     e.preventDefault();
     // No audio playback here: starting media in the same tap as the mic can
@@ -1011,7 +1132,7 @@
     if (state === "listening") stopListening();
     else if (state === "idle" || state === "speaking") startListening();
   }
-
+ 
   /* ===================== Speech recognition ===================== */
   // Android Chrome: continuous mode duplicates text, so we use short segments
   // and restart automatically until the user taps "send".
@@ -1019,14 +1140,14 @@
   let committed = "", segmentFinal = "", interim = "", listenTimer = null;
   let startWatchdog = null, abortedCount = 0, silenceTimer = null, lastHeard = "";
   let audioStarted = false, stopFallback = null;
-
+ 
   function createRecognizer() {
     const r = new SR();
     r.lang = "th-TH";
     r.interimResults = true;
     r.continuous = !isAndroid;
     r.maxAlternatives = 1;
-
+ 
     // Every handler ignores events from an older recognizer (late "end" events
     // from the previous sentence must never cut the current one).
     r.onstart = () => { if (r !== rec) return; recActive = true; micTrace("start"); };
@@ -1088,7 +1209,7 @@
     };
     return r;
   }
-
+ 
   function startListening() {
     if (!SR) return;
     stopAudio();
@@ -1099,12 +1220,12 @@
     audioStarted = false; recActive = false;
     clearTimeout(stopFallback);
     el.retry.hidden = true;
-
+ 
     // A brand-new recognizer for every tap (iPhone fails when one is reused).
     const old = rec;
     rec = createRecognizer();
     if (old) { try { old.abort(); } catch {} }
-
+ 
     // Mic check: not started, or (iPhone) started but not hearing anything.
     clearTimeout(startWatchdog);
     startWatchdog = setTimeout(() => {
@@ -1130,7 +1251,7 @@
     clearTimeout(listenTimer);
     listenTimer = setTimeout(() => { if (state === "listening") stopListening(); }, MAX_LISTEN_MS);
   }
-
+ 
   function armAutoSend() {
     if (!el.autoSend.checked || state !== "listening") return;
     const heard = joinText(committed, segmentFinal || interim);
@@ -1139,7 +1260,7 @@
     clearTimeout(silenceTimer);
     silenceTimer = setTimeout(() => { if (state === "listening") stopListening(true); }, AUTO_SEND_SILENCE_MS);
   }
-
+ 
   function stopListening(auto) {
     userStopped = true;
     lastAuto = auto === true;
@@ -1162,7 +1283,7 @@
     }
     else finishListening();
   }
-
+ 
   function finishListening() {
     clearTimeout(listenTimer);
     clearTimeout(silenceTimer);
@@ -1178,7 +1299,7 @@
     }
     sendChat(text);
   }
-
+ 
   function renderLive() {
     if (state !== "listening") { el.live.textContent = ""; return; }
     const done = joinText(committed, segmentFinal);
@@ -1190,9 +1311,9 @@
     el.live.append(s, document.createTextNode(interim ? " " + interim : ""));
     el.live.scrollTop = el.live.scrollHeight;
   }
-
+ 
   function joinText(a, b) { return [a, b].map((x) => (x || "").trim()).filter(Boolean).join(" "); }
-
+ 
   /* ===================== Chat turn ===================== */
   // Flow: staff bubble -> "typing" bubble -> text + voice revealed together.
   async function sendChat(text, isRetry) {
@@ -1204,7 +1325,7 @@
     el.retry.hidden = true;
     setState("thinking");
     const bubble = addTyping();
-
+ 
     const body = { sessionId, personaId, level: examLevel, message: text, history: lines.slice(-CHAT_HISTORY_LINES).join("\n"), no_voice: Date.now() < ttsCooldownUntil, tts_prefer: examTtsModel };
     const useCombined = voiceMode === "ai" && COMBINED_REQUEST && !combinedUnsupported;
     m.path = voiceMode !== "ai" ? "text" : useCombined ? "combined" : "separate";
@@ -1247,7 +1368,7 @@
     if (!m.recorded) recordTurn(m, text, reply);
     await deliverReply(bubble, reply, preUrl, m, myTurn, t0, preErr, preModel);
   }
-
+ 
   /* ---------- recorder mode turn (iPhone): audio in, transcript + reply out ---------- */
   async function sendVoice(b64, isRetry) {
     const myTurn = ++turnSeq;
@@ -1313,7 +1434,7 @@
     if (!m.recorded) recordTurn(m, said, reply);
     await deliverReply(bubble, reply, r.url, m, myTurn, t0, r.voiceError, r.ttsModel);
   }
-
+ 
   // The conversation history is updated as soon as the text arrives (not when the voice
   // does), so a slow voice never loses a turn.
   function recordTurn(m, staffText, reply) {
@@ -1322,7 +1443,7 @@
     lines.push("พนักงาน: " + staffText, "ลูกค้า: " + reply);
     turns++;
   }
-
+ 
   // Never make the staff wait long for the customer's voice: after VOICE_WAIT_MS the
   // text is shown, the mic is free again, and the voice (if it comes) waits behind the
   // "ฟังเสียง" button instead of interrupting.
@@ -1340,7 +1461,7 @@
       setState("idle", "เสียงลูกค้ากำลังตามมา รอฟังสักครู่ หรือแตะไมค์พูดต่อได้เลย");
     }, VOICE_WAIT_MS);
   }
-
+ 
   // A turn whose voice arrived after the staff already moved on: keep text, attach voice.
   function finishLateTurn(bubble, url, m) {
     clearTimeout(bubble._releaseTimer);
@@ -1350,7 +1471,7 @@
     m.voice_late = true;
     pushMetric(m);
   }
-
+ 
   // If the voice is not ready shortly after the text, show the text with a loading
   // icon so the staff can start reading (voice follows automatically).
   function scheduleEarlyReveal(bubble, reply, myTurn) {
@@ -1362,7 +1483,7 @@
       if (state === "thinking") el.micLabel.textContent = "กำลังโหลดเสียง…";
     }, EARLY_REVEAL_MS);
   }
-
+ 
   async function deliverReply(bubble, reply, preUrl, m, myTurn, t0, preErr, preModel) {
     // Text only / device voice: reveal right away
     if (voiceMode !== "ai") {
@@ -1375,7 +1496,7 @@
       pushMetric(m);
       return;
     }
-
+ 
     // AI voice: keep the typing bubble until audio is ready (max REVEAL_WAIT_MS)
     const t1 = performance.now();
     let ttsPromise;
@@ -1406,7 +1527,7 @@
       revealReply(bubble, reply, "loading");
       setState("speaking", "กำลังโหลดเสียงลูกค้า…");
     }, REVEAL_WAIT_MS);
-
+ 
     let url = null;
     try { url = await ttsPromise; } catch { url = null; }
     clearTimeout(timer);
@@ -1421,7 +1542,7 @@
     }
     if (!revealed) revealReply(bubble, reply);
     revealed = true;
-
+ 
     m.tts_ms = preUrl ? 0 : Math.round(performance.now() - t1);
     m.tts_ok = !!url;
     clearTimeout(bubble._releaseTimer);
@@ -1468,7 +1589,7 @@
     }
     pushMetric(m);
   }
-
+ 
   // What went wrong, in words the staff (and the admin) can act on.
   function sendErrorText(err) {
     if (err && err.type === "GEMINI_ERROR") {
@@ -1478,12 +1599,12 @@
     if (err && (err.status === 500 || err.type === "CONFIG_ERROR")) return "ระบบหลังบ้านตั้งค่าไม่ครบ ผู้ดูแลตรวจได้ที่ลิงก์ ?diag=1";
     return "ส่งไม่สำเร็จ ตรวจสอบอินเทอร์เน็ต แล้วแตะ \"ส่งประโยคเดิมอีกครั้ง\" หรือพูดใหม่";
   }
-
+ 
   function pushMetric(m) {
     metrics.push(m);
     showDebug(m);
   }
-
+ 
   function voiceErrorText(m) {
     const e = m.voice_error || "";
     if (e === "API_LIMIT") return /day|daily|perday/i.test(m.voice_error_msg || "") ? "โควตาเสียงรายวันเต็ม" : "โควตาเสียงต่อนาทีเต็ม";
@@ -1493,7 +1614,7 @@
     if (e) return "Gemini ไม่ส่งเสียงกลับ (" + e + ")";
     return "";
   }
-
+ 
   function showDebug(m) {
     const sec = (x) => (typeof x === "number" ? (x / 1000).toFixed(1) + " วิ" : "-");
     const voiceErr = voiceErrorText(m);
@@ -1506,14 +1627,14 @@
     console.log("[latency]", m);
     if (DEBUG) setStatus(msg);
   }
-
-
+ 
+ 
   function micTrace(ev) {
     micLog.push(Math.round(performance.now()) + ":" + ev);
     if (micLog.length > 12) micLog.shift();
     if (DEBUG) setStatus("ไมค์: " + micLog.slice(-4).join(" › "));
   }
-
+ 
   function revealReply(bubble, reply, mode) {
     bubble.classList.remove("typing");
     bubble.textContent = "";
@@ -1532,7 +1653,7 @@
     if (turns === 1 && window.innerWidth < 900) setPersonaOpen(false);
     keepChatAtBottom();
   }
-
+ 
   function setReplayIcon(bubble, mode) {
     const b = bubble.querySelector(".replay");
     if (!b) return;
@@ -1542,9 +1663,9 @@
     else if (mode === "failed") b.innerHTML = SPEAKER_SVG + "<span>ฟังเสียง</span>";
     else b.innerHTML = SPEAKER_SVG;
   }
-
+ 
   function markVoiceFailed(bubble) { setReplayIcon(bubble, "failed"); }
-
+ 
   function cooldown(seconds) {
     let left = seconds;
     setState("cooldown", "");
@@ -1561,7 +1682,7 @@
     };
     tick();
   }
-
+ 
   /* ===================== Audio ===================== */
   // One <audio> element for the whole session:
   // - plays through the speaker even when the iPhone silent switch is on
@@ -1576,13 +1697,13 @@
   let audioUrls = [];
   let voices = [];
   const SILENT_URL = URL.createObjectURL(makeWav(new Int16Array(1200), 24000));
-
+ 
   if ("speechSynthesis" in window) {
     const loadVoices = () => { voices = window.speechSynthesis.getVoices(); };
     loadVoices();
     window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
   }
-
+ 
   function unlockAudio() {
     if (audioUnlocked) return;
     audioUnlocked = true;
@@ -1594,7 +1715,7 @@
         .catch((e) => { if (!e || e.name !== "AbortError") audioUnlocked = false; });
     } catch { audioUnlocked = false; }
   }
-
+ 
   function makeWav(samples, sampleRate) {
     const buf = new ArrayBuffer(44 + samples.length * 2);
     const v = new DataView(buf);
@@ -1606,7 +1727,7 @@
     new Int16Array(buf, 44).set(samples);
     return new Blob([buf], { type: "audio/wav" });
   }
-
+ 
   function pcmBase64ToWavUrl(base64, sampleRate) {
     const bin = atob(base64);
     const len = bin.length - (bin.length % 2);
@@ -1622,7 +1743,7 @@
     return url;
   }
   const trimByUrl = new Map();   // silence cut from each clip (shown with ?debug=1)
-
+ 
   // Gemini TTS clips often start (and end) with silence: playback "starts" but the
   // first word comes ~0.5–1 s later. Cut it so the voice begins the moment it plays.
   let lastTrimMs = 0, lastLeadTrimMs = 0, trimLeadMs = 0;
@@ -1654,7 +1775,7 @@
     for (let w = n - 1, run = 0; w >= 0; w--) { run = loud[w] ? run + 1 : 0; if (run === RUN) { last = w + RUN - 1; break; } }
     lastNoiseCutMs = 0;
     if (first < 0 || last < first) { trimLeadMs = 0; return s; }   // no clear speech: leave untouched
-
+ 
     // typical speech loudness = median of the loud windows
     const speech = [];
     for (let w = first; w <= last; w++) if (loud[w]) speech.push(rms[w]);
@@ -1702,9 +1823,9 @@
     for (let i = 0; i < f; i++) out[out.length - f + i] = Math.round(out[out.length - f + i] * (1 - (i + 1) / f));
     return out;
   }
-
-
-
+ 
+ 
+ 
   async function fetchTts(text, avoid) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), TIMEOUT.tts);
@@ -1736,7 +1857,7 @@
       clearTimeout(timer);
     }
   }
-
+ 
   function audioUrlFromGemini(data) {
     const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
     const part = parts.find((p) => p.inlineData && p.inlineData.data);
@@ -1744,7 +1865,7 @@
     const m = /rate=(\d+)/.exec(part.inlineData.mimeType || "");
     return pcmBase64ToWavUrl(part.inlineData.data, m ? Number(m[1]) : 24000);
   }
-
+ 
   // One request: line 1 = reply JSON (arrives first), rest = voice (or {"error"}).
   // onHead(data) fires the moment line 1 arrives, before the voice is ready.
   async function chatVoice(body, timeoutMs, onHead) {
@@ -1822,8 +1943,8 @@
       clearTimeout(timer);
     }
   }
-
-
+ 
+ 
   async function fetchTtsWithRetry(text, avoid) {
     try { return await fetchTts(text, avoid); }
     catch (err) {
@@ -1832,12 +1953,12 @@
       return await fetchTts(text, err.model || avoid); // same voice name; skip the model that just failed
     }
   }
-
+ 
   function quietRecognizer() {
     // a recognizer still finishing keeps the phone in "call" audio mode during playback
     if (rec && recActive) { try { rec.abort(); } catch {} recActive = false; micTrace("abort-before-play"); }
   }
-
+ 
   function playUrl(url, bubble, myTurn, onRefused) {
     quietRecognizer();
     setAudioSession("playback");
@@ -1863,7 +1984,7 @@
       if (state === "speaking" && myTurn === turnSeq) setState("idle", "แตะที่หน้าจอ 1 ครั้งเพื่อฟังเสียงลูกค้า");
     });
   }
-
+ 
   let pendingPlay = null;
   document.addEventListener("pointerdown", (ev) => {
     if (!pendingPlay) return;
@@ -1873,7 +1994,7 @@
     setState("speaking");
     playUrl(pp.url, pp.bubble, pp.myTurn);
   }, true);
-
+ 
   function speakDevice(text, myTurn) {
     const gender = (persona && persona.gender) || "female";
     const finish = () => { if (state === "speaking" && myTurn === turnSeq) setState("idle"); };
@@ -1891,14 +2012,14 @@
     synth.speak(u);
     return true;
   }
-
+ 
   function stopAudio() {
     try { player.pause(); } catch {}
     player.onended = null; player.onerror = null;
     if (playingBubble) { setReplayIcon(playingBubble, "idle"); playingBubble = null; }
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
   }
-
+ 
   /* ===================== Recorder mode (iPhone) ===================== */
   // Standard microphone API (same one video-call sites use) + Web Audio, encoded
   // as 16 kHz mono WAV and sent to the Worker, where Gemini transcribes it.
@@ -1906,7 +2027,7 @@
   let recChunks = [], recRate = 48000, recStartAt = 0, recTick = null;
   let heardVoice = false, lastLoudAt = 0, recLevel = 0, recStarting = false;
   const VOICE_RMS = 0.02;   // above this = someone is speaking
-
+ 
   // Runs inside the tap (a user gesture), so a fresh audio engine is allowed to start.
   // After the screen was locked or the app hidden, iPhone leaves the old one "interrupted"
   // and it never delivers sound again, so we replace it instead of resuming it.
@@ -1929,7 +2050,7 @@
     if (!recCtx) recCtx = new AC();
     if (recCtx.state !== "running") recCtx.resume().catch(() => {});
   }
-
+ 
   async function startRecording() {
     if (recStarting) return;
     recStarting = true;
@@ -1999,7 +2120,7 @@
       if (performance.now() - recStartAt > MAX_RECORD_MS) stopRecording(false);
     }, 120);
   }
-
+ 
   function renderMeter() {
     const secs = Math.floor((performance.now() - recStartAt) / 1000);
     const lvl = Math.min(1, recLevel / 0.12);
@@ -2016,7 +2137,7 @@
     t.textContent = (heardVoice ? "ได้ยินเสียงแล้ว " : "พูดได้เลย ") + Math.floor(secs / 60) + ":" + String(secs % 60).padStart(2, "0");
     el.live.append(meter, t);
   }
-
+ 
   function teardownRecorder() {
     clearInterval(recTick);
     try { recProc && (recProc.onaudioprocess = null); } catch {}
@@ -2031,9 +2152,9 @@
     recCtx = null;
     setAudioSession("playback");
   }
-
+ 
   function cancelRecording() { teardownRecorder(); recChunks = []; el.live.textContent = ""; }
-
+ 
   function stopRecording(auto) {
     if (state !== "listening") return;
     lastAuto = auto === true;
@@ -2051,7 +2172,7 @@
     }
     sendVoice(encodeWav16k(chunks, rate));
   }
-
+ 
   function encodeWav16k(chunks, rate) {
     let n = 0; chunks.forEach((c) => { n += c.length; });
     const input = new Float32Array(n); let off = 0;
@@ -2071,7 +2192,7 @@
     for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
     return btoa(bin);
   }
-
+ 
   function makeWavBuffer(samples, sampleRate) {
     const buf = new ArrayBuffer(44 + samples.length * 2);
     const v = new DataView(buf);
@@ -2083,9 +2204,9 @@
     new Int16Array(buf, 44).set(samples);
     return buf;
   }
-
+ 
   function voiceTurn(body, timeoutMs, onHead) { return chatVoice(Object.assign({}, body, { action: "voice_turn" }), timeoutMs, onHead); }
-
+ 
   function releaseAudioForMic() {
     try {
       player.onended = null; player.onerror = null;
@@ -2095,13 +2216,13 @@
     } catch {}
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
   }
-
+ 
   function releaseAudioUrls() {
     stopAudio();
     audioUrls.forEach((u) => URL.revokeObjectURL(u));
     audioUrls = [];
   }
-
+ 
   async function replay(bubble, text) {
     if (state === "listening" || state === "thinking" || state === "busy" || state === "cooldown") return;
     unlockAudio();
@@ -2123,7 +2244,7 @@
     setState("speaking");
     playUrl(bubble._audioUrl, bubble, myTurn);
   }
-
+ 
   /* ===================== Messages ===================== */
   function addMessage(who, text) {
     const div = document.createElement("div");
@@ -2133,7 +2254,7 @@
     keepChatAtBottom();
     return div;
   }
-
+ 
   function addTyping() {
     const div = document.createElement("div");
     div.className = "msg ai typing";
@@ -2143,18 +2264,18 @@
     keepChatAtBottom();
     return div;
   }
-
+ 
   function addSystem(text) {
     const div = document.createElement("div");
     div.className = "msg system";
     div.textContent = text;
     el.chat.appendChild(div);
   }
-
+ 
   function keepChatAtBottom() {
     requestAnimationFrame(() => { el.chat.scrollTop = el.chat.scrollHeight; });
   }
-
+ 
   /* ===================== Evaluate ===================== */
   function askEnd() {
     if (turns < MIN_TURNS) {
@@ -2164,12 +2285,12 @@
     if (typeof el.dialog.showModal === "function") el.dialog.showModal();
     else if (window.confirm("จบการสนทนาและส่งประเมินผล?")) evaluate();
   }
-
+ 
   function closeDialog(ok) {
     el.dialog.close();
     if (ok) evaluate();
   }
-
+ 
   async function evaluate() {
     stopAudio();
     turnSeq++;
@@ -2200,7 +2321,7 @@
         : "ประเมินผลไม่สำเร็จ ตรวจสอบอินเทอร์เน็ตแล้วกด \"จบและดูผล\" อีกครั้ง", true);
     }
   }
-
+ 
   function renderResult(d) {
     const pct = Number(d.score_percentage) || 0;
     el.score.textContent = pct + "%";
@@ -2215,7 +2336,7 @@
     if (!chip) { chip = document.createElement("div"); chip.id = "levelChip"; chip.className = "level-chip"; el.scoreSub.after(chip); }
     chip.textContent = d.level_label || levelLabel || "";
     chip.hidden = !chip.textContent;
-
+ 
     el.resultSteps.textContent = "";
     (d.steps || []).forEach((s) => {
       const li = document.createElement("li");
@@ -2235,7 +2356,7 @@
       li.append(mark, body);
       el.resultSteps.appendChild(li);
     });
-
+ 
     el.summary.textContent = d.summary || "ไม่มีสรุปจากกรรมการ";
     const langList = $("langList"); langList.textContent = "";
     (d.language_issues || []).forEach((x) => { const li = document.createElement("li"); li.textContent = x; langList.appendChild(li); });
@@ -2267,7 +2388,7 @@
     });
     el.transcript.textContent = lines.join("\n");
   }
-
+ 
   /* ===================== Network ===================== */
   async function api(action, body, timeoutMs, retries = 0) {
     let lastErr;
@@ -2303,7 +2424,7 @@
     }
     throw lastErr;
   }
-
+ 
   /* ===================== Voice mode ===================== */
   function cycleVoice() {
     const i = VOICE_MODES.findIndex((m) => m.id === voiceMode);
@@ -2317,10 +2438,10 @@
     voiceMode = m.id;
     el.voiceBtn.textContent = m.label;
   }
-
+ 
   /* ===================== Device helpers ===================== */
   function vibrate(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch {} }
-
+ 
   async function requestWakeLock() {
     try { if ("wakeLock" in navigator && !wakeLock) wakeLock = await navigator.wakeLock.request("screen"); } catch {}
   }
@@ -2328,7 +2449,7 @@
     try { if (wakeLock) wakeLock.release(); } catch {}
     wakeLock = null;
   }
-
+ 
   function onVisibility() {
     if (document.visibilityState === "hidden") {
       if (state === "listening") {
@@ -2345,7 +2466,7 @@
       if (!el.session.hidden) requestWakeLock();
     }
   }
-
+ 
   function debug(tChat, tVoice, source) {
     const msg = "แชท " + (tChat / 1000).toFixed(1) + " วิ" + (tVoice != null ? " | เสียง (" + source + ") " + (tVoice / 1000).toFixed(1) + " วิ" : "");
     console.log("[latency]", msg);
@@ -2355,3 +2476,12 @@
 </script>
 </body>
 </html>
+ 
+
+
+
+
+
+
+
+Claude finished the response
