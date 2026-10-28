@@ -207,6 +207,15 @@
     .gk { font-size: 12px; color: var(--label-2); }
     .gv { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
     .price-list { padding: 12px 16px 12px 34px; color: var(--label); font-size: 15px; line-height: 1.6; margin: 0; }
+    .pc-row { padding: 12px 16px; box-shadow: inset 0 calc(var(--hair) * -1) 0 var(--sep); }
+    .pc-row:last-child { box-shadow: none; }
+    .pc-head { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; }
+    .pc-mark { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 14px; flex: none; }
+    .pc-mark.ok { background: var(--green-tint); color: var(--green); }
+    .pc-mark.bad { background: var(--red-tint); color: var(--red); }
+    .pc-quote { margin: 6px 0 0 34px; font-size: 14px; color: var(--label-2); line-height: 1.5; }
+    .pc-calc { margin: 8px 0 0 34px; padding: 8px 12px; background: var(--fill); border-radius: 10px; font-size: 14px; line-height: 1.7; font-variant-numeric: tabular-nums; }
+    .pc-total { font-weight: 700; color: var(--label); }
     .version-tag { margin: 8px 0 0; text-align: center; font-size: 13px; color: var(--label-2); }
     .notice {
       border-radius: var(--r-cell);
@@ -540,7 +549,7 @@
 
       <div class="start-bar">
         <button class="btn-primary" id="startBtn" type="button">เริ่มสอบ</button>
-        <p class="version-tag" id="versionTag">เวอร์ชัน 4.3</p>
+        <p class="version-tag" id="versionTag">เวอร์ชัน 4.5</p>
       </div>
     </div>
   </section>
@@ -603,9 +612,9 @@
       <ul class="group result-steps" id="resultSteps"></ul>
 
       <div id="priceWrap" hidden>
-        <div class="group-title">ความถูกต้องของราคา</div>
-        <div class="group"><ul class="price-list" id="priceList"></ul></div>
-        <p class="group-footer">ไม่มีผลต่อคะแนน 5 ขั้นตอน ตรวจจากราคาทองที่แสดงระหว่างสอบ</p>
+        <div class="group-title">การคำนวณราคา</div>
+        <div class="group" id="priceList"></div>
+        <p class="group-footer">ยอดที่แจ้งลูกค้าต้องตรงเป๊ะ คำนวณผิดแม้ 1 ครั้ง = ไม่ผ่านการสอบ (อ้างอิงราคาขายจากการ์ดราคาทองระหว่างสอบ)</p>
       </div>
 
       <div id="langWrap" hidden>
@@ -660,7 +669,7 @@
   const TIMEOUT = { start: 8000, chat: 12000, tts: 20000, evaluate: 30000 };
   const CHAT_HISTORY_LINES = 30;
   const DEBUG = new URLSearchParams(location.search).has("debug");
-  const APP_VERSION = "4.3";
+  const APP_VERSION = "4.5";
   const QS = new URLSearchParams(location.search);
   // Text + voice in one request (network only, never touches the mic).
   // Falls back to chat + tts automatically if the Worker is older. Off: ?combined=0
@@ -926,7 +935,8 @@
     renderGold((data && data.gold) || null);
     renderPersona(persona);
     const opening = (data && data.opening) || "ลูกค้าเดินเข้ามาในร้านแล้ว แตะปุ่มไมค์แล้วกล่าวทักทายได้เลย";
-    addSystem((levelLabel ? levelLabel + " | " : "") + opening);
+    // Exam screen shows just the level the staff chose ("ระดับ 1"); the result screen keeps the full label
+    addSystem((examLevel ? "ระดับ " + examLevel + " | " : "") + opening);
     setState("idle");
   }
 
@@ -2227,9 +2237,27 @@
     const langList = $("langList"); langList.textContent = "";
     (d.language_issues || []).forEach((x) => { const li = document.createElement("li"); li.textContent = x; langList.appendChild(li); });
     $("langWrap").hidden = !(d.language_issues && d.language_issues.length);
+    // Every price the staff quoted, with the correct working step by step
     const priceList = $("priceList"); priceList.textContent = "";
-    (d.price_issues || []).forEach((x) => { const li = document.createElement("li"); li.textContent = x; priceList.appendChild(li); });
-    $("priceWrap").hidden = !(d.price_issues && d.price_issues.length);
+    const checks = d.price_checks || [];
+    checks.forEach((c) => {
+      const row = document.createElement("div"); row.className = "pc-row";
+      const head = document.createElement("div"); head.className = "pc-head";
+      const mark = document.createElement("span"); mark.className = "pc-mark " + (c.ok ? "ok" : "bad"); mark.textContent = c.ok ? "✓" : "✕";
+      const said = document.createElement("span"); said.className = "pc-said";
+      said.textContent = "พนักงานบอก " + Number(c.stated).toLocaleString("th-TH") + " บาท" + (c.ok ? " ถูกต้อง" : " ไม่ถูกต้อง");
+      head.append(mark, said); row.appendChild(head);
+      if (c.quote) { const q = document.createElement("div"); q.className = "pc-quote"; q.textContent = "“" + c.quote + "”"; row.appendChild(q); }
+      const calc = document.createElement("div"); calc.className = "pc-calc";
+      (c.lines || []).forEach((t, i, arr) => { const l = document.createElement("div"); l.textContent = t; if (i === arr.length - 1) l.className = "pc-total"; calc.appendChild(l); });
+      row.appendChild(calc);
+      priceList.appendChild(row);
+    });
+    // older Worker: plain list of issues
+    if (!checks.length && d.price_issues && d.price_issues.length) {
+      d.price_issues.forEach((x) => { const r = document.createElement("div"); r.className = "pc-row"; r.textContent = x; priceList.appendChild(r); });
+    }
+    $("priceWrap").hidden = !(checks.length || (d.price_issues && d.price_issues.length));
     el.keywords.textContent = "";
     (d.keyword_details || []).forEach((k) => {
       const li = document.createElement("li"); li.textContent = k; el.keywords.appendChild(li);
