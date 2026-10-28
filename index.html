@@ -549,7 +549,7 @@
 
       <div class="start-bar">
         <button class="btn-primary" id="startBtn" type="button">เริ่มสอบ</button>
-        <p class="version-tag" id="versionTag">เวอร์ชัน 4.8</p>
+        <p class="version-tag" id="versionTag">เวอร์ชัน 4.7</p>
       </div>
     </div>
   </section>
@@ -669,7 +669,7 @@
   const TIMEOUT = { start: 8000, chat: 12000, tts: 20000, evaluate: 30000 };
   const CHAT_HISTORY_LINES = 30;
   const DEBUG = new URLSearchParams(location.search).has("debug");
-  const APP_VERSION = "4.8";
+  const APP_VERSION = "4.7";
   const QS = new URLSearchParams(location.search);
   // Text + voice in one request (network only, never touches the mic).
   // Falls back to chat + tts automatically if the Worker is older. Off: ?combined=0
@@ -815,7 +815,7 @@
     if (r.ok) return "ใช้ได้";
     if (r.ok === null) return "ยังไม่ได้ตรวจ";
     // must come first: this message also contains "not supported for"
-    if (/location is not supported|user location/i.test(n)) return "ไม่ใช่ปัญหาชื่อโมเดล: data center ของ Cloudflare ที่ตอบคำขอนี้อยู่ในพื้นที่ที่ Gemini ไม่รองรับ (ดูชื่อ data center ด้านบน) แก้ด้วยการตั้งเส้นทางสำรอง GEMINI_FALLBACK_BASE ใน Worker";
+    if (/location is not supported|user location/i.test(n)) return "ไม่ใช่ปัญหาชื่อโมเดล: data center ของ Cloudflare ที่ตอบคำขอนี้อยู่ในพื้นที่ที่ Gemini ไม่รองรับ (ดูชื่อ data center ด้านบน) แก้ด้วยการเพิ่มตัวส่งต่อ GEMINI_RELAY ใน Worker";
     if (r.status === 404 || /not found|not supported for|is not available/i.test(n)) return "ชื่อโมเดลไม่ถูกต้อง หรือโมเดลนี้เลิกให้บริการ: แก้ชื่อหรือลบออกจากรายการ";
     if (/api key|API_KEY/i.test(n)) return "API key นี้ใช้ไม่ได้: ลบออกจาก GEMINI_API_KEYS หรือสร้างใหม่";
     if (r.status === 403) return "key หรือโปรเจกต์ไม่มีสิทธิ์ใช้โมเดลนี้ (เช่น ยังไม่ผูก billing)";
@@ -857,9 +857,7 @@
       sum.className = "diag-help";
       const g = d.gold;
       sum.textContent = (g ? "ราคาทอง: " + (g.is_example ? "ยังใช้ค่าสมมติ (ตั้ง GOLD_PRICE เพื่อกำหนดเอง) " : g.label + " ") + "รูปพรรณ ขาย " + Math.round(g.ornament_sell).toLocaleString("th-TH") + " / รับซื้อ " + Math.round(g.ornament_buy).toLocaleString("th-TH") + " | " : "") + "จำนวน API key: " + d.keys + (d.edge && d.edge.colo ? " | Cloudflare data center: " + d.edge.colo + (d.edge.country ? " (" + d.edge.country + ")" : "") : "")
-        + (d.fallback && d.fallback.configured ? " | เส้นทางสำรอง: " + d.fallback.host + (d.fallback.used ? " (ใช้งานอยู่ในการตรวจครั้งนี้)" : " (ยังไม่จำเป็นต้องใช้)")
-           : d.relay && d.relay.configured ? " | ตัวส่งต่อ: ตั้งแล้ว (" + d.relay.region + ")" + (d.relay.used ? " ใช้งานอยู่ในการตรวจครั้งนี้" : "")
-           : d.fallback ? " | เส้นทางสำรอง: ยังไม่ได้ตั้ง (GEMINI_FALLBACK_BASE)" : "") + " | ไม่ผ่าน " + bad + " รายการ" + (bad ? " (แก้ตามคอลัมน์ \"ผล / วิธีแก้\" แล้วตรวจใหม่)" : " ทุกอย่างพร้อมใช้งาน");
+        + (d.relay ? " | ตัวส่งต่อ: " + (d.relay.configured ? "ตั้งแล้ว (" + d.relay.region + ")" + (d.relay.used ? " ใช้งานอยู่ในการตรวจครั้งนี้" : " ยังไม่จำเป็นต้องใช้") : "ยังไม่ได้ตั้ง") : "") + " | ไม่ผ่าน " + bad + " รายการ" + (bad ? " (แก้ตามคอลัมน์ \"ผล / วิธีแก้\" แล้วตรวจใหม่)" : " ทุกอย่างพร้อมใช้งาน");
       out.append(sum, t);
     } catch (e) {
       out.textContent = e.status === 400 && /Invalid action/i.test(e.message)
