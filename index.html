@@ -384,6 +384,34 @@
     .transcript { white-space: pre-wrap; font-size: 15px; color: var(--label-2); margin: 0; padding: 0 16px 14px; }
     .stack { display: flex; flex-direction: column; gap: 10px; margin-top: 24px; }
 
+    /* ===== Feedback on the evaluation ===== */
+    .fb-box { padding: 14px 16px; }
+    .fb-q { font-weight: 600; margin: 0 0 10px; }
+    .fb-thumbs { display: flex; gap: 10px; }
+    .fb-thumbs button { flex: 1; min-height: 52px; border-radius: var(--r-btn); background: var(--tint); color: var(--accent-text); font-size: 17px; font-weight: 600; }
+    .fb-thumbs button:active { background: var(--tint-strong); }
+    .fb-field { margin-top: 16px; }
+    .fb-field:first-child { margin-top: 0; }
+    .fb-label { display: block; font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+    .fb-hint { font-size: 13px; color: var(--label-2); display: flex; justify-content: space-between; margin-top: 4px; }
+    .fb-step { padding: 8px 0; box-shadow: inset 0 calc(var(--hair) * -1) 0 var(--sep); }
+    .fb-step:last-child { box-shadow: none; }
+    .fb-step-name { font-size: 15px; margin-bottom: 6px; }
+    .fb-step-name .mark { display: inline-grid; width: 22px; height: 22px; font-size: 12px; margin-right: 6px; vertical-align: -4px; }
+    .fb-box textarea, .fb-box input[type="text"] {
+      width: 100%; border: var(--hair) solid var(--sep); border-radius: 10px; background: var(--surface);
+      font: inherit; font-size: 17px; padding: 8px 10px; color: var(--label);
+    }
+    .fb-box textarea { min-height: 84px; resize: vertical; }
+    .fb-box .seg.need { box-shadow: inset 0 0 0 2px var(--red); background: var(--red-tint); }
+    .fb-box .btn-primary { margin-top: 18px; }
+    .fb-box .btn-primary:disabled, .fb-thumbs button:disabled { opacity: .5; }
+    .fb-status { font-size: 15px; margin: 10px 0 0; }
+    .fb-status.err { color: var(--red); }
+    .fb-status:empty { display: none; }
+    .fb-thanks { margin: 0; font-weight: 600; color: var(--green); }
+    .fb-retry { margin-top: 10px; min-height: 44px; }
+
     /* ===== iOS-style alert ===== */
     dialog.alert {
       border: none; padding: 0;
@@ -549,7 +577,7 @@
 
       <div class="start-bar">
         <button class="btn-primary" id="startBtn" type="button">เริ่มสอบ</button>
-        <p class="version-tag" id="versionTag">เวอร์ชัน 4.5</p>
+        <p class="version-tag" id="versionTag">เวอร์ชัน 4.6</p>
       </div>
     </div>
   </section>
@@ -629,6 +657,56 @@
         <ul class="kw" id="keywordList"></ul>
       </div>
 
+      <div id="fbWrap">
+        <div class="group-title" id="fbTitle">ความเห็นต่อผลประเมิน</div>
+        <!-- staff (default): one tap -->
+        <div class="group fb-box" id="fbStaff">
+          <p class="fb-q" id="fbStaffQ">ผลประเมินนี้ยุติธรรมไหม?</p>
+          <div class="fb-thumbs" role="group" aria-labelledby="fbStaffQ">
+            <button type="button" data-overall="fair">👍 ยุติธรรม</button>
+            <button type="button" data-overall="unfair">👎 ไม่ยุติธรรม</button>
+          </div>
+        </div>
+        <!-- area supervisor (?reviewer=1) -->
+        <form class="group fb-box" id="fbReviewer" hidden novalidate>
+          <div class="fb-field">
+            <span class="fb-label" id="fbOverallLbl">ภาพรวมผลประเมินของกรรมการ AI</span>
+            <div class="seg" role="radiogroup" aria-labelledby="fbOverallLbl" id="fbOverall">
+              <button type="button" role="radio" aria-checked="false" data-v="accurate">ตรง</button>
+              <button type="button" role="radio" aria-checked="false" data-v="too_strict">เข้มเกินไป</button>
+              <button type="button" role="radio" aria-checked="false" data-v="too_lenient">หลวมเกินไป</button>
+            </div>
+          </div>
+          <div class="fb-field">
+            <span class="fb-label">เห็นด้วยกับผลรายเกณฑ์หรือไม่</span>
+            <div id="fbSteps"></div>
+          </div>
+          <div class="fb-field">
+            <span class="fb-label" id="fbStrictLbl">ความยืดหยุ่นของการให้คะแนน</span>
+            <div class="seg" role="radiogroup" aria-labelledby="fbStrictLbl" id="fbStrict">
+              <button type="button" role="radio" aria-checked="false" data-v="1">1</button>
+              <button type="button" role="radio" aria-checked="false" data-v="2">2</button>
+              <button type="button" role="radio" aria-checked="false" data-v="3">3</button>
+              <button type="button" role="radio" aria-checked="false" data-v="4">4</button>
+              <button type="button" role="radio" aria-checked="false" data-v="5">5</button>
+            </div>
+            <div class="fb-hint"><span>1 = เข้มงวดมาก</span><span>5 = ยืดหยุ่นมาก</span></div>
+          </div>
+          <div class="fb-field">
+            <label class="fb-label" for="fbComment">ความคิดเห็นเพิ่มเติม (ไม่บังคับ)</label>
+            <textarea id="fbComment" maxlength="1000" placeholder="เช่น ข้อ 3 พนักงานเสนอทางเลือกแล้ว ควรผ่าน"></textarea>
+          </div>
+          <div class="fb-field">
+            <label class="fb-label" for="fbName">ชื่อผู้ประเมิน</label>
+            <input type="text" id="fbName" maxlength="80" autocomplete="name" placeholder="ชื่อ-นามสกุล หัวหน้าเขต">
+          </div>
+          <button class="btn-primary" type="submit" id="fbSubmit">ส่งความเห็น</button>
+        </form>
+        <div class="group fb-box" id="fbDone" hidden><p class="fb-thanks" id="fbThanks">ขอบคุณสำหรับความเห็น</p></div>
+        <p class="fb-status group-footer" id="fbStatus" role="status"></p>
+        <button class="btn-secondary fb-retry" id="fbRetry" type="button" hidden>ลองส่งอีกครั้ง</button>
+      </div>
+
       <div class="group-title">บทสนทนา</div>
       <div class="group">
         <details>
@@ -669,7 +747,7 @@
   const TIMEOUT = { start: 8000, chat: 12000, tts: 20000, evaluate: 30000 };
   const CHAT_HISTORY_LINES = 30;
   const DEBUG = new URLSearchParams(location.search).has("debug");
-  const APP_VERSION = "4.5";
+  const APP_VERSION = "4.6";
   const QS = new URLSearchParams(location.search);
   // Text + voice in one request (network only, never touches the mic).
   // Falls back to chat + tts automatically if the Worker is older. Off: ?combined=0
@@ -2263,7 +2341,141 @@
       const li = document.createElement("li"); li.textContent = k; el.keywords.appendChild(li);
     });
     el.transcript.textContent = lines.join("\n");
+    setupFeedback(d);
   }
+
+  /* ===================== Feedback on the evaluation ===================== */
+  // Staff (default): 👍 / 👎 once. Area supervisor (?reviewer=1): full review form.
+  // One send per exam round; a failed send keeps the answer and shows a retry button.
+  const REVIEWER = QS.get("reviewer") === "1";
+  let fbSentFor = "";            // sessionId whose feedback is saved
+  let fbPending = null;          // last payload that failed (for retry)
+  let fbSending = false;
+
+  function segValue(seg) {
+    const b = seg.querySelector('button[aria-checked="true"]');
+    return b ? b.dataset.v : null;
+  }
+  function bindSeg(seg) {
+    seg.addEventListener("click", (e) => {
+      const b = e.target.closest("button");
+      if (!b || !seg.contains(b) || fbSending) return;
+      seg.querySelectorAll("button").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
+      seg.classList.remove("need");
+    });
+  }
+  function resetSeg(seg) {
+    seg.querySelectorAll("button").forEach((x) => x.setAttribute("aria-checked", "false"));
+    seg.classList.remove("need");
+  }
+  function setFbStatus(text, isErr) {
+    const s = $("fbStatus");
+    s.textContent = text || "";
+    s.classList.toggle("err", !!isErr);
+  }
+  function setFbBusy(busy) {
+    fbSending = busy;
+    document.querySelectorAll("#fbStaff button, #fbReviewer button, #fbReviewer textarea, #fbReviewer input, #fbRetry")
+      .forEach((x) => { x.disabled = busy; });
+  }
+
+  function setupFeedback(d) {
+    const steps = d.steps || [];
+    const wrap = $("fbWrap");
+    wrap.hidden = !sessionId || steps.length !== 5;
+    if (wrap.hidden) return;
+    fbPending = null;
+    setFbBusy(false);
+    setFbStatus("");
+    $("fbRetry").hidden = true;
+    $("fbTitle").textContent = REVIEWER ? "ความเห็นหัวหน้าเขตต่อผลประเมิน" : "ความเห็นต่อผลประเมิน";
+    const sent = fbSentFor === sessionId;
+    $("fbStaff").hidden = REVIEWER || sent;
+    $("fbReviewer").hidden = !REVIEWER || sent;
+    $("fbDone").hidden = !sent;
+    if (!REVIEWER) return;
+
+    resetSeg($("fbOverall"));
+    resetSeg($("fbStrict"));
+    $("fbComment").value = "";
+    if (!$("fbName").value) $("fbName").value = store.get("reviewerName", "");
+    const box = $("fbSteps");
+    box.textContent = "";
+    steps.forEach((s, i) => {
+      const row = document.createElement("div"); row.className = "fb-step";
+      const name = document.createElement("div"); name.className = "fb-step-name";
+      const mark = document.createElement("span"); mark.className = "mark " + (s.passed ? "ok" : "no");
+      mark.textContent = s.passed ? "✓" : "✕";
+      mark.setAttribute("aria-label", s.passed ? "กรรมการ AI ให้ผ่าน" : "กรรมการ AI ให้ไม่ผ่าน");
+      name.append(mark, document.createTextNode((s.step || i + 1) + ". " + (s.name || "") + (s.passed ? " (ผ่าน)" : " (ไม่ผ่าน)")));
+      const seg = document.createElement("div"); seg.className = "seg"; seg.setAttribute("role", "radiogroup");
+      seg.setAttribute("aria-label", "ข้อ " + (i + 1) + " เห็นด้วยกับผลหรือไม่");
+      [["agree", "เห็นด้วย"], ["disagree", "ไม่เห็นด้วย"]].forEach(([v, t]) => {
+        const b = document.createElement("button"); b.type = "button"; b.setAttribute("role", "radio");
+        b.setAttribute("aria-checked", "false"); b.dataset.v = v; b.textContent = t; seg.appendChild(b);
+      });
+      bindSeg(seg);
+      row.append(name, seg);
+      box.appendChild(row);
+    });
+  }
+
+  async function sendFeedback(payload) {
+    if (fbSending || fbSentFor === payload.session_id) return;
+    setFbBusy(true);
+    $("fbRetry").hidden = true;
+    setFbStatus("กำลังส่งความเห็น…");
+    try {
+      await api("feedback", payload, 10000, 1);
+      fbSentFor = payload.session_id;
+      fbPending = null;
+      if (payload.reviewer_name) store.set("reviewerName", payload.reviewer_name);
+      if (payload.session_id === sessionId) {
+        $("fbStaff").hidden = true;
+        $("fbReviewer").hidden = true;
+        $("fbThanks").textContent = payload.role === "reviewer"
+          ? "บันทึกความเห็นเรียบร้อยแล้ว ขอบคุณที่ช่วยตรวจผลประเมิน"
+          : "ขอบคุณสำหรับความเห็น ระบบบันทึกไว้แล้ว";
+        $("fbDone").hidden = false;
+        setFbStatus("");
+      }
+    } catch (err) {
+      fbPending = payload;
+      setFbStatus(err.status === 400
+        ? "ข้อมูลไม่ครบหรือไม่ถูกต้อง กรุณาตรวจสอบแล้วส่งอีกครั้ง"
+        : "ส่งความเห็นไม่สำเร็จ ตรวจสอบอินเทอร์เน็ตแล้วแตะ \"ลองส่งอีกครั้ง\"", true);
+      $("fbRetry").hidden = err.status === 400;
+    } finally {
+      setFbBusy(false);
+    }
+  }
+
+  document.querySelectorAll("#fbStaff [data-overall]").forEach((b) => b.addEventListener("click", () => {
+    sendFeedback({ session_id: sessionId, role: "staff", overall: b.dataset.overall, level: examLevel || undefined });
+  }));
+  bindSeg($("fbOverall"));
+  bindSeg($("fbStrict"));
+  $("fbReviewer").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const overall = segValue($("fbOverall"));
+    const strict = segValue($("fbStrict"));
+    const stepSegs = Array.from($("fbSteps").querySelectorAll(".seg"));
+    const stepVals = stepSegs.map(segValue);
+    const name = $("fbName").value.trim();
+    const missing = [];
+    if (!overall) { $("fbOverall").classList.add("need"); missing.push("ภาพรวม"); }
+    stepSegs.forEach((s, i) => { if (!stepVals[i]) s.classList.add("need"); });
+    if (stepVals.some((v) => !v)) missing.push("ผลรายเกณฑ์ให้ครบ 5 ข้อ");
+    if (!strict) { $("fbStrict").classList.add("need"); missing.push("ความยืดหยุ่น"); }
+    if (!name) missing.push("ชื่อผู้ประเมิน");
+    if (missing.length) { setFbStatus("กรุณาเลือกหรือกรอก: " + missing.join(", "), true); return; }
+    sendFeedback({
+      session_id: sessionId, role: "reviewer", overall, strictness: Number(strict),
+      step_agreement: stepVals, comment: $("fbComment").value.trim(), reviewer_name: name,
+      level: examLevel || undefined,
+    });
+  });
+  $("fbRetry").addEventListener("click", () => { if (fbPending) sendFeedback(fbPending); });
 
   /* ===================== Network ===================== */
   async function api(action, body, timeoutMs, retries = 0) {
